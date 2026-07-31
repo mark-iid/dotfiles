@@ -146,6 +146,18 @@ binds {
     // Game mode: toggle touchpad disable-while-typing (also on the waybar bar).
     Mod+Shift+G { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/dwt-toggle"; }
 
+    // --- Application launchers -------------------------------------------------
+    // Mnemonic single-Mod keys. Mod+D is the fuzzel launcher (type any app), so
+    // Discord takes Mod+Shift+D. Flatpaks launch via `flatpak run`; layered apps
+    // (evolution, code) by name; Discord is the native ~/.local/bin launcher.
+    Mod+B       { spawn "flatpak" "run" "org.mozilla.firefox"; }             // Browser (Firefox)
+    Mod+C       { spawn "code"; }                                            // Code (VS Code)
+    Mod+E       { spawn "evolution"; }                                       // Email (Evolution)
+    Mod+S       { spawn "flatpak" "run" "com.slack.Slack"; }                 // Slack
+    Mod+P       { spawn "flatpak" "run" "com.bitwarden.desktop"; }           // Passwords (Bitwarden)
+    Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
+    Mod+Shift+D { spawn "sh" "-c" "exec $HOME/.local/bin/discord"; }         // Discord
+
     // Clipboard history picker.
     Mod+V { spawn "sh" "-c" "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
 
