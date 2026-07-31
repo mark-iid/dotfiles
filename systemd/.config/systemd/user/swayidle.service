@@ -1,0 +1,12 @@
+[Unit]
+Description=swayidle — idle lock + screen-off for the niri session
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+# Lock with gtklock after 5 min; DPMS the displays off after 10 (restored on
+# activity); lock before suspend. Single source of truth for the idle policy —
+# niri starts this at login and the caffeine toggle stops/starts it.
+ExecStart=/usr/bin/swayidle -w timeout 300 'pgrep -x gtklock || gtklock' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x gtklock || gtklock'
+Restart=on-failure

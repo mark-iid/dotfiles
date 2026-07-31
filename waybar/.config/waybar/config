@@ -1,0 +1,63 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 28,
+    "spacing": 6,
+    "modules-left": ["niri/workspaces", "niri/window"],
+    "modules-center": ["clock"],
+    "modules-right": ["custom/dwt", "tray", "pulseaudio", "network", "backlight", "power-profiles-daemon", "battery"],
+
+    "niri/workspaces": {
+        "format": "{index}"
+    },
+    "niri/window": {
+        "max-length": 60,
+        "tooltip": false
+    },
+    "clock": {
+        "format": "{:%a %d %b  %I:%M %p}",
+        "tooltip-format": "<tt><small>{calendar}</small></tt>"
+    },
+    "custom/dwt": {
+        "return-type": "json",
+        "exec": "$HOME/.config/waybar/scripts/dwt-status",
+        "on-click": "$HOME/.config/niri/scripts/dwt-toggle",
+        "interval": "once",
+        "signal": 8
+    },
+    "tray": {
+        "spacing": 8
+    },
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "󰝟 muted",
+        "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
+        "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    },
+    "network": {
+        "format-wifi": "󰤨 {essid}",
+        "format-ethernet": "󰈀 {ipaddr}",
+        "format-disconnected": "󰤮",
+        "tooltip-format": "{ifname}: {ipaddr}"
+    },
+    "backlight": {
+        "format": "󰃞 {percent}%"
+    },
+    "power-profiles-daemon": {
+        "format": "{icon}",
+        "tooltip": true,
+        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+        "format-icons": {
+            "default": "󰓅",
+            "performance": "󰓅",
+            "balanced": "󰾅",
+            "power-saver": "󰌪"
+        }
+    },
+    "battery": {
+        "states": { "warning": 30, "critical": 15 },
+        "format": "{icon} {capacity}%",
+        "format-charging": "󰂄 {capacity}%",
+        "format-icons": ["󰁺", "󰁽", "󰂀", "󰂂", "󰁹"]
+    }
+}

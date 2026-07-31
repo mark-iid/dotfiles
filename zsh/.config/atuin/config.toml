@@ -1,0 +1,4 @@
+# atuin config (DESIGN §1). The one setting the operator specifically calls out
+# is cross-shell history search: search across all shells, not just the current.
+[search]
+shells = "all"

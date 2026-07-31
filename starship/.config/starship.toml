@@ -1,0 +1,39 @@
+# starship prompt (DESIGN §1). Starter config — sourced by `starship init zsh`
+# in the .zshrc. Portable across the Framework and the Mac Mini.
+add_newline = true
+command_timeout = 1000
+
+format = """
+$directory\
+$git_branch$git_status\
+$python$nodejs$rust$java\
+$cmd_duration\
+$line_break\
+$character"""
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+
+[directory]
+truncation_length = 4
+truncate_to_repo = true
+style = "bold cyan"
+
+[git_branch]
+symbol = " "
+style = "bold purple"
+
+[git_status]
+style = "bold yellow"
+
+[cmd_duration]
+min_time = 2000
+format = "[ $duration]($style) "
+style = "bold yellow"
+
+[java]
+symbol = " "
+
+[python]
+symbol = " "

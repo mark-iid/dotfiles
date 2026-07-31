@@ -1,0 +1,38 @@
+[user]
+	name = mark
+	email = mark@mystikos.org
+
+[init]
+	defaultBranch = main
+
+[pull]
+	ff = only
+
+[push]
+	autoSetupRemote = true
+	default = simple
+
+[fetch]
+	prune = true
+
+[merge]
+	conflictStyle = zdiff3
+
+[rerere]
+	enabled = true
+
+[diff]
+	algorithm = histogram
+	colorMoved = default
+
+[core]
+	# use the brew delta pager if present; falls back to less otherwise
+	pager = less -FRX
+
+[alias]
+	st = status -sb
+	co = checkout
+	br = branch
+	lg = log --oneline --graph --decorate -20
+[credential]
+	helper = store

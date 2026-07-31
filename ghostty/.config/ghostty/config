@@ -1,0 +1,13 @@
+# ghostty — primary terminal for the kb3lyb-sway niri session (DESIGN §2).
+# GTK4 + Wayland-native, so it honors niri's 1.35 fractional scale directly:
+# font-size is points at the scaled DPI — no dpi-aware knob like foot needed.
+font-family = monospace
+font-size = 11
+
+# Port of the previous foot look (Tokyo Night storm background/foreground).
+background = 1a1b26
+foreground = c0caf5
+background-opacity = 0.96
+
+cursor-style = block
+cursor-style-blink = true

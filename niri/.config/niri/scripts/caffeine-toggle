@@ -1,0 +1,18 @@
+#!/bin/sh
+# Caffeine — toggle "stay awake" for presentations / video. Bound to Mod+Shift+C.
+#   ON  = stop the swayidle service (no auto-lock or screen-off) + block suspend
+#   OFF = start the swayidle service + release the suspend inhibitor
+# State is tracked by the systemd-inhibit process's --why marker, so the toggle is
+# stateless. swayidle runs as a user service (swayidle.service) so there is exactly
+# one managed instance — no pkill races or duplicate daemons.
+MARK=kb3lyb-caffeine
+
+if pkill -f "why=$MARK" 2>/dev/null; then
+    systemctl --user start swayidle.service
+    notify-send -a caffeine "☕ Caffeine OFF" "Idle lock & suspend restored"
+else
+    systemctl --user stop swayidle.service
+    setsid systemd-inhibit --what=sleep:handle-lid-switch --why="$MARK" \
+        --mode=block sleep infinity >/dev/null 2>&1 </dev/null &
+    notify-send -a caffeine "☕ Caffeine ON" "Staying awake — no lock or suspend"
+fi

@@ -1,0 +1,12 @@
+#!/bin/sh
+# waybar custom/dwt: report niri touchpad disable-while-typing state. dwt ON shows a
+# keyboard glyph (touchpad pauses while typing); dwt OFF shows a controller glyph
+# (game mode — keyboard+pointer work together). Matches the //@DWT marker set by
+# scripts/dwt-toggle.
+CFG="$HOME/.config/niri/config.kdl"
+
+if grep -qE '^[[:space:]]*dwt //@DWT' "$CFG"; then
+    printf '{"text":"󰌌","alt":"on","class":"on","tooltip":"disable-while-typing ON — touchpad pauses while typing. Click for game mode."}\n'
+else
+    printf '{"text":"󰊴","alt":"off","class":"off","tooltip":"Game mode — touchpad works while typing (dwt off). Click to re-enable dwt."}\n'
+fi

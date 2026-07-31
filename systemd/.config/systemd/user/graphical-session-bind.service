@@ -1,0 +1,15 @@
+[Unit]
+Description=Activate graphical-session.target for a bare `niri --session`
+# niri.service binds graphical-session.target (BindsTo=/Before=), but the image
+# launches niri as a bare command from greetd — not via niri.service — so the
+# target, and thus xdg-desktop-portal (which has Requisite=graphical-session.target),
+# never comes up. That kills the portal: no dark-mode color-scheme signal, no
+# file-chooser/screencast portals. This oneshot mirrors niri.service's binding to
+# pull the target up. niri's config starts it at session startup (spawn-at-startup).
+BindsTo=graphical-session.target
+Before=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true

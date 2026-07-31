@@ -1,0 +1,14 @@
+# --- Claude Code: publish only intended config/scripts, never runtime state ---
+# Everything under ~/.claude is ignored by default (session transcripts, shell-env
+# snapshots, cached auth tokens, plugins, backups, caches all live here); only the
+# hand-maintained config + scripts below are whitelisted back in. Add new Claude
+# config files explicitly (git add -f) so runtime state can never leak.
+claude/.claude/*
+!claude/.claude/settings.json
+!claude/.claude/statusline.sh
+!claude/.claude/tmux-limits.sh
+
+# --- general junk ---
+*.log
+*.swp
+.DS_Store

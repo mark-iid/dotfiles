@@ -1,0 +1,21 @@
+#!/bin/sh
+# Toggle niri touchpad disable-while-typing (dwt) by flipping the //@DWT marker line
+# in the niri config; niri auto-reloads on save. Bound to Mod+Shift+G and the waybar
+# custom/dwt module. ~/.config/niri is a stow directory symlink into the dotfiles, so
+# `sed -i` rewrites the real dotfiles file in place (the symlink is a *directory*, not
+# the file, so it's untouched) — expect a 1-line diff in ~/dotfiles while dwt is ON.
+CFG="$HOME/.config/niri/config.kdl"
+
+if grep -qE '^[[:space:]]*dwt //@DWT' "$CFG"; then
+    # currently ON -> turn OFF (comment the marked line)
+    sed -i -E 's|^([[:space:]]*)dwt //@DWT|\1// dwt //@DWT|' "$CFG"
+    state="off (game mode)"
+else
+    # currently OFF -> turn ON (uncomment the marked line)
+    sed -i -E 's|^([[:space:]]*)// dwt //@DWT|\1dwt //@DWT|' "$CFG"
+    state="on"
+fi
+
+pkill -RTMIN+8 waybar 2>/dev/null   # refresh the waybar custom/dwt module
+command -v notify-send >/dev/null 2>&1 && \
+    notify-send -a touchpad "Touchpad" "disable-while-typing $state"
