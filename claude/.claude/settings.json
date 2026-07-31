@@ -25,6 +25,7 @@
     "command": "bash ~/.claude/statusline.sh"
   },
   "tui": "fullscreen",
+  "includeCoAuthoredBy": false,
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
   "teammateMode": "tmux",
