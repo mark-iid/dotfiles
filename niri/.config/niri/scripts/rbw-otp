@@ -1,0 +1,23 @@
+#!/bin/sh
+# rbw TOTP picker (bound to Mod+O). Fuzzy-pick a vault entry that has a TOTP secret,
+# copy its current 6-digit code to the clipboard (wl-copy — native on niri),
+# auto-clear after 15s (codes rotate ~30s), and keep it out of clipboard history.
+# Unlocks the rbw agent via pinentry-gnome3 (GUI) if locked.
+export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+
+rbw unlocked >/dev/null 2>&1 || rbw unlock || exit 1
+
+name=$(rbw ls 2>/dev/null | sort -u | fuzzel --dmenu --prompt='🔐 ') || exit 0
+[ -n "$name" ] || exit 0
+
+code=$(rbw code "$name" 2>/dev/null | head -n1)
+if [ -z "$code" ]; then
+    notify-send -a rbw "🔐 rbw" "No TOTP on: $name"
+    exit 1
+fi
+
+printf '%s' "$code" | wl-copy
+notify-send -a rbw "🔐 TOTP copied" "$name — clears in 15s"
+
+( sleep 0.4; cliphist list 2>/dev/null | head -n1 | cliphist delete 2>/dev/null ) &
+( sleep 15; [ "$(wl-paste -n 2>/dev/null)" = "$code" ] && wl-copy --clear 2>/dev/null ) &

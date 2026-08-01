@@ -167,6 +167,7 @@ binds {
     Mod+E       { spawn "evolution"; }                                       // Email (Evolution)
     Mod+S       { spawn "flatpak" "run" "com.slack.Slack"; }                 // Slack
     Mod+P       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-pick"; } // Passwords — rbw picker → clipboard (Bitwarden app can't copy on niri)
+    Mod+O       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-otp"; }  // OTP — rbw TOTP code → clipboard
     Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
     Mod+Shift+D { spawn "sh" "-c" "exec $HOME/.local/bin/discord"; }         // Discord
 
