@@ -1,0 +1,25 @@
+[Unit]
+Description=rclone mount — InstrumentalID OneDrive (M365)
+Documentation=man:rclone(1)
+# The OAuth token lives in ~/.config/rclone/rclone.conf (NOT in this repo). This unit
+# just mounts the `onedrive-iid` remote; create that remote with `rclone config`.
+After=default.target
+
+[Service]
+Type=notify
+ExecStartPre=-/usr/bin/mkdir -p %h/OneDrive-InstrumentalID
+ExecStart=/usr/bin/rclone mount onedrive-iid: %h/OneDrive-InstrumentalID \
+    --vfs-cache-mode writes \
+    --vfs-cache-max-age 24h \
+    --vfs-cache-max-size 4G \
+    --dir-cache-time 12h \
+    --poll-interval 15s \
+    --umask 077 \
+    --no-console
+ExecStop=/usr/bin/fusermount3 -u %h/OneDrive-InstrumentalID
+# rclone fails fast if the network/remote isn't ready yet; just keep retrying.
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

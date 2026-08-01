@@ -1,0 +1,38 @@
+#!/bin/sh
+# Block committing credentials into this (public) dotfiles repo.
+#   - refuses credential-like FILENAMES (private keys, rclone.conf, .netrc, ...)
+#   - scans staged CONTENT for secret material (private keys, OAuth/access tokens,
+#     provider API keys, password=... assignments)
+# The .githooks/ dir is excluded from the content scan (this file literally contains
+# the detection patterns). Deliberate override, only if you are SURE: git commit --no-verify
+fail=0
+
+# 1) forbidden filenames (defence if .gitignore is bypassed with `git add -f`)
+for f in $(git diff --cached --name-only --diff-filter=ACM); do
+    case ".githooks/" in "$f"*) continue;; esac
+    case "$(basename "$f")" in
+        rclone.conf|.credentials.json|credentials.json|.netrc|.git-credentials|\
+        id_rsa|id_ed25519|id_ecdsa|id_dsa|*.pem|*.key|*.p12|*.pfx|*.gpg)
+            echo "BLOCKED: credential-like file staged: $f" >&2; fail=1;;
+    esac
+done
+
+# 2) secret material in staged additions (skip this hook dir)
+patterns='-----BEGIN [A-Z ]*PRIVATE KEY-----|"access_token"|"refresh_token"|client_secret *[:=]|AKIA[0-9A-Z]{16}|aws_secret_access_key *[:=]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|gho_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|Authorization: *Bearer +[A-Za-z0-9._-]{20,}|(password|passwd|secret|api[_-]?key) *[:=] *.?[A-Za-z0-9/+_=-]{8,}'
+hits=$(git diff --cached -U0 --no-color -- . ':(exclude).githooks/' \
+        | grep -E '^\+' \
+        | grep -EI -e "$patterns" \
+        | grep -vEI 'Read\(\*\*|SKIP_|helper *= *store|secret-tool|freedesktop\.secrets|includeCoAuthoredBy|kwallet' )
+if [ -n "$hits" ]; then
+    echo "BLOCKED: possible secret in staged changes:" >&2
+    printf '%s\n' "$hits" | head -20 >&2
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo "" >&2
+    echo "Commit aborted to keep credentials out of the dotfiles repo." >&2
+    echo "False positive? Review carefully, then re-run with: git commit --no-verify" >&2
+    exit 1
+fi
+exit 0

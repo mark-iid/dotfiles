@@ -8,6 +8,29 @@ claude/.claude/*
 !claude/.claude/statusline.sh
 !claude/.claude/tmux-limits.sh
 
+# --- credentials: NEVER in this repo (belt; the pre-commit hook is the suspenders) ---
+# Private keys / certs
+*.pem
+*.key
+*.p12
+*.pfx
+*.gpg
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
+# Token / secret stores
+**/rclone.conf
+**/.credentials.json
+**/credentials.json
+**/.netrc
+**/.git-credentials
+**/*secret*
+**/*token*
+.env
+.env.*
+!.env.example
+
 # --- general junk ---
 *.log
 *.swp

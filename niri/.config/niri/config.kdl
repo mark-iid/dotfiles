@@ -116,6 +116,10 @@ spawn-at-startup "swaybg" "-c" "0000AA"
 // background. (Do NOT chain -l/-a CLI calls at startup — those activate the app and
 // re-show the window; EE reapplies the last-loaded preset on its own.)
 spawn-at-startup "flatpak" "run" "com.github.wwmm.easyeffects" "--service-mode" "--hide-window"
+// rclone mount: InstrumentalID OneDrive (M365) at ~/OneDrive-InstrumentalID. The
+// OAuth token lives in ~/.config/rclone (never in the repo); this just starts the
+// user mount unit at login (systemd unit in the dotfiles systemd/ package).
+spawn-at-startup "systemctl" "--user" "start" "rclone-onedrive-iid.service"
 // Idle lock runs as a user service (swayidle.service, in dotfiles systemd/): lock
 // with gtklock after 5 min, DPMS the displays off after 10, lock before suspend.
 // Started here at login; the caffeine toggle (Mod+Shift+C) stops/starts it. Edit
