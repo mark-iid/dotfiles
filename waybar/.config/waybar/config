@@ -5,7 +5,7 @@
     "spacing": 6,
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["mpris", "clock"],
-    "modules-right": ["custom/dwt", "idle_inhibitor", "privacy", "custom/updates", "tray", "bluetooth", "network", "pulseaudio", "cpu", "memory", "temperature", "power-profiles-daemon", "battery"],
+    "modules-right": ["custom/dwt", "idle_inhibitor", "privacy", "custom/updates", "tray", "bluetooth", "pulseaudio", "cpu", "memory", "temperature", "power-profiles-daemon", "battery"],
 
     "niri/workspaces": {
         "format": "{index}"
@@ -70,12 +70,6 @@
         "tooltip-format-connected": "{controller_alias}\n{device_enumerate}",
         "tooltip-format-enumerate-connected": "{device_alias}",
         "on-click": "blueman-manager"
-    },
-    "network": {
-        "format-wifi": "󰤨 {essid}",
-        "format-ethernet": "󰈀 {ipaddr}",
-        "format-disconnected": "󰤮",
-        "tooltip-format": "{ifname}: {ipaddr}"
     },
     "pulseaudio": {
         "format": "{icon} {volume}%",
