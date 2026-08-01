@@ -159,7 +159,7 @@ binds {
     // always opens *a* terminal.
     Mod+Return  { spawn "sh" "-c" "command -v ghostty >/dev/null 2>&1 && exec ghostty || exec foot"; }
     Mod+D       { spawn "fuzzel"; }
-    Mod+Escape  { spawn "gtklock"; }
+    Mod+Escape  { spawn "swaylock" "-f"; }  // static locker (gtklock's live clock defeated the idle DPMS-off)
     // Caffeine: toggle stay-awake (stop idle-lock + block suspend) for presenting.
     Mod+Shift+C { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/caffeine-toggle"; }
     // Game mode: toggle touchpad disable-while-typing (also on the waybar bar).

@@ -5,8 +5,10 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-# Lock with gtklock after 5 min; DPMS the displays off after 10 (restored on
+# Lock with swaylock after 5 min; DPMS the displays off after 10 (restored on
 # activity); lock before suspend. Single source of truth for the idle policy —
-# niri starts this at login and the caffeine toggle stops/starts it.
-ExecStart=/usr/bin/swayidle -w timeout 300 'pgrep -x gtklock || gtklock' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x gtklock || gtklock'
+# niri starts this at login and the caffeine toggle stops/starts it. swaylock (not
+# gtklock) on purpose: gtklock's live clock repaints every minute and re-wakes the
+# panel, so the DPMS-off never stuck overnight; swaylock is static while idle.
+ExecStart=/usr/bin/swayidle -w timeout 300 'pgrep -x swaylock || swaylock -f' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x swaylock || swaylock -f'
 Restart=on-failure
