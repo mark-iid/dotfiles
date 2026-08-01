@@ -59,6 +59,12 @@ environment {
     ELECTRON_OZONE_PLATFORM_HINT "auto"
     QT_QPA_PLATFORM "wayland"
     MOZ_ENABLE_WAYLAND "1"
+    // Force the dark GTK theme session-wide. Most GTK3 apps honor
+    // gtk-application-prefer-dark-theme from ~/.config/gtk-3.0/settings.ini, but
+    // XFCE apps (Thunar) ignore that flag and stay light unless the dark *variant*
+    // is named explicitly. Adwaita:dark is the built-in dark variant (no extra
+    // theme package needed). niri exports this to everything it spawns.
+    GTK_THEME "Adwaita:dark"
     // XWayland via niri's xwayland-satellite integration.
     DISPLAY ":0"
 }
