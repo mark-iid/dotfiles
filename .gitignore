@@ -35,3 +35,6 @@ id_dsa
 *.log
 *.swp
 .DS_Store
+
+# Thunar rewrites this on every exit (keybinding accel cache) — not worth versioning
+Thunar/.config/Thunar/accels.scm
