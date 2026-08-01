@@ -5,7 +5,7 @@
     "spacing": 6,
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/dwt", "tray", "pulseaudio", "network", "backlight", "power-profiles-daemon", "battery"],
+    "modules-right": ["custom/dwt", "tray", "pulseaudio", "network", "backlight", "cpu", "memory", "power-profiles-daemon", "battery"],
 
     "niri/workspaces": {
         "format": "{index}"
@@ -53,6 +53,16 @@
             "balanced": "󰾅",
             "power-saver": "󰌪"
         }
+    },
+    "cpu": {
+        "interval": 2,
+        "format": "󰻠 {usage}%",
+        "tooltip-format": "CPU load {load}"
+    },
+    "memory": {
+        "interval": 5,
+        "format": "󰍛 {percentage}%",
+        "tooltip-format": "{used:0.1f}G / {total:0.1f}G used  ·  swap {swapPercentage}%"
     },
     "battery": {
         "states": { "warning": 30, "critical": 15 },
