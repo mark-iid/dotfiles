@@ -1,0 +1,14 @@
+#!/bin/sh
+# Floating btop popup — launched by clicking the waybar cpu/memory modules. btop is
+# a TUI, so it runs in a foot window with app-id=sysmon, which a niri window-rule
+# floats. Click again (or press q) to close. niri-spawned processes don't get brew
+# on PATH, so add it (btop lives there).
+export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+
+# toggle: if a sysmon popup is already open, close it instead of stacking another
+if niri msg -j windows 2>/dev/null | grep -q '"app_id": *"sysmon"'; then
+    pkill -f 'app-id=sysmon' 2>/dev/null
+    exit 0
+fi
+
+exec foot --app-id=sysmon --window-size-chars=120x40 -- btop

@@ -142,6 +142,12 @@ window-rule {
     open-floating true
 }
 
+// btop system-monitor popup (click the waybar cpu/memory modules): float it.
+window-rule {
+    match app-id="^sysmon$"
+    open-floating true
+}
+
 binds {
     Mod+Shift+Slash { show-hotkey-overlay; }      // niri's built-in raw bind list
     Mod+Slash       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/cheatsheet"; }  // pretty KEYBINDS.md popup
