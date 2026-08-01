@@ -10,7 +10,7 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+C` | VS Code |
 | `Mod+E` | Email (Evolution) |
 | `Mod+S` | Slack |
-| `Mod+P` | Passwords (Bitwarden) |
+| `Mod+P` | Passwords (rbw picker → clipboard) |
 | `Mod+M` | Music (Supersonic) |
 | `Mod+Shift+D` | Discord |
 | `Mod+D` | App launcher (fuzzel — type any app) |

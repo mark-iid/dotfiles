@@ -1,0 +1,26 @@
+#!/bin/sh
+# rbw password picker (bound to Mod+P). Fuzzy-pick a vault entry in fuzzel, copy its
+# password to the clipboard, auto-clear after 45s, and keep it out of clipboard
+# history. Uses `wl-copy` (native ext_data_control — works on niri, unlike the
+# Bitwarden Electron app whose clipboard lib needs a protocol niri doesn't offer).
+# Unlocks the rbw agent via pinentry-gnome3 (GUI) if locked.
+export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+
+rbw unlocked >/dev/null 2>&1 || rbw unlock || exit 1
+
+name=$(rbw ls 2>/dev/null | sort -u | fuzzel --dmenu --prompt='🔑 ') || exit 0
+[ -n "$name" ] || exit 0
+
+pw=$(rbw get "$name" 2>/dev/null | head -n1)
+if [ -z "$pw" ]; then
+    notify-send -a rbw "🔑 rbw" "No single password for: $name (duplicate name? use the app to disambiguate)"
+    exit 1
+fi
+
+printf '%s' "$pw" | wl-copy
+notify-send -a rbw "🔑 Copied" "$name — clipboard clears in 45s"
+
+# keep the password out of clipboard history (delete the entry cliphist just stored)
+( sleep 0.4; cliphist list 2>/dev/null | head -n1 | cliphist delete 2>/dev/null ) &
+# auto-clear the clipboard after 45s, only if it's still the password
+( sleep 45; [ "$(wl-paste -n 2>/dev/null)" = "$pw" ] && wl-copy --clear 2>/dev/null ) &

@@ -23,7 +23,7 @@ input {
         // keyboard and pointer work together in games (Minecraft/Myst). Enabling it
         // makes the touchpad briefly freeze after each keypress. Don't hand-edit the
         // marked line — the toggle scripts match on its trailing marker.
-        // dwt //@DWT
+        dwt //@DWT
     }
     focus-follows-mouse
 }
@@ -166,7 +166,7 @@ binds {
     Mod+C       { spawn "code"; }                                            // Code (VS Code)
     Mod+E       { spawn "evolution"; }                                       // Email (Evolution)
     Mod+S       { spawn "flatpak" "run" "com.slack.Slack"; }                 // Slack
-    Mod+P       { spawn "flatpak" "run" "com.bitwarden.desktop"; }           // Passwords (Bitwarden)
+    Mod+P       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-pick"; } // Passwords — rbw picker → clipboard (Bitwarden app can't copy on niri)
     Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
     Mod+Shift+D { spawn "sh" "-c" "exec $HOME/.local/bin/discord"; }         // Discord
 
