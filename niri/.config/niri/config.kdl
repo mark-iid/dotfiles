@@ -102,7 +102,8 @@ spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
 spawn-at-startup "sh" "-c" "wl-paste --watch cliphist store"
 spawn-at-startup "wl-clip-persist" "--clipboard" "both"
 spawn-at-startup "nm-applet" "--indicator"
-spawn-at-startup "blueman-applet"
+// blueman-applet dropped: the waybar `bluetooth` module shows status and opens
+// blueman-manager on click for pairing (bluetoothd still runs the stack).
 // Solid Norton-blue wallpaper (#0000AA), matching the tuigreet login screen and
 // the KB3LYB / Norton Utilities presentation style. niri has no background of its
 // own, so swaybg paints one; -c takes RRGGBB without the leading '#'.

@@ -4,15 +4,26 @@
     "height": 28,
     "spacing": 6,
     "modules-left": ["niri/workspaces", "niri/window"],
-    "modules-center": ["clock"],
-    "modules-right": ["custom/dwt", "tray", "pulseaudio", "network", "backlight", "cpu", "memory", "power-profiles-daemon", "battery"],
+    "modules-center": ["mpris", "clock"],
+    "modules-right": ["custom/dwt", "idle_inhibitor", "privacy", "custom/updates", "tray", "bluetooth", "network", "pulseaudio", "cpu", "memory", "temperature", "power-profiles-daemon", "battery"],
 
     "niri/workspaces": {
         "format": "{index}"
     },
     "niri/window": {
-        "max-length": 60,
+        "max-length": 50,
         "tooltip": false
+    },
+    "mpris": {
+        "format": "{status_icon} {dynamic}",
+        "dynamic-order": ["title", "artist"],
+        "dynamic-len": 38,
+        "status-icons": { "playing": "▶", "paused": "⏸", "stopped": "⏹" },
+        "on-click": "playerctl play-pause",
+        "on-click-right": "playerctl next",
+        "on-scroll-up": "playerctl volume 0.05+",
+        "on-scroll-down": "playerctl volume 0.05-",
+        "tooltip-format": "{title}\n{artist} — {album}\n(click: play/pause · right-click: next)"
     },
     "clock": {
         "format": "{:%a %d %b  %I:%M %p}",
@@ -25,14 +36,40 @@
         "interval": "once",
         "signal": 8
     },
+    "idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": { "activated": "󰅶", "deactivated": "󰤄" },
+        "tooltip-format-activated": "Staying awake (idle inhibited) — click to allow idle",
+        "tooltip-format-deactivated": "Idle allowed — click to stay awake"
+    },
+    "privacy": {
+        "icon-spacing": 6,
+        "icon-size": 14,
+        "transition-duration": 200,
+        "modules": [
+            { "type": "screenshare", "tooltip": true },
+            { "type": "audio-in", "tooltip": true }
+        ]
+    },
+    "custom/updates": {
+        "return-type": "json",
+        "exec": "$HOME/.config/waybar/scripts/updates",
+        "interval": 1800,
+        "signal": 9,
+        "on-click": "pkill -RTMIN+9 waybar"
+    },
     "tray": {
         "spacing": 8
     },
-    "pulseaudio": {
-        "format": "{icon} {volume}%",
-        "format-muted": "󰝟 muted",
-        "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
-        "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    "bluetooth": {
+        "format": "󰂯",
+        "format-off": "",
+        "format-disabled": "󰂲",
+        "format-connected": "󰂱 {num_connections}",
+        "tooltip-format": "{controller_alias}",
+        "tooltip-format-connected": "{controller_alias}\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "on-click": "blueman-manager"
     },
     "network": {
         "format-wifi": "󰤨 {essid}",
@@ -40,19 +77,11 @@
         "format-disconnected": "󰤮",
         "tooltip-format": "{ifname}: {ipaddr}"
     },
-    "backlight": {
-        "format": "󰃞 {percent}%"
-    },
-    "power-profiles-daemon": {
-        "format": "{icon}",
-        "tooltip": true,
-        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
-        "format-icons": {
-            "default": "󰓅",
-            "performance": "󰓅",
-            "balanced": "󰾅",
-            "power-saver": "󰌪"
-        }
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "󰝟 muted",
+        "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
+        "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
     },
     "cpu": {
         "interval": 2,
@@ -65,6 +94,27 @@
         "format": "󰍛 {percentage}%",
         "tooltip-format": "{used:0.1f}G / {total:0.1f}G used  ·  swap {swapPercentage}% — click for btop",
         "on-click": "$HOME/.config/niri/scripts/sysmon"
+    },
+    "temperature": {
+        "interval": 5,
+        "hwmon-path-abs": "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
+        "input-filename": "temp1_input",
+        "critical-threshold": 90,
+        "format": "󰔏 {temperatureC}°C",
+        "format-critical": "󰸁 {temperatureC}°C",
+        "tooltip-format": "CPU (k10temp) {temperatureC}°C — click for btop",
+        "on-click": "$HOME/.config/niri/scripts/sysmon"
+    },
+    "power-profiles-daemon": {
+        "format": "{icon}",
+        "tooltip": true,
+        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+        "format-icons": {
+            "default": "󰓅",
+            "performance": "󰓅",
+            "balanced": "󰾅",
+            "power-saver": "󰌪"
+        }
     },
     "battery": {
         "states": { "warning": 30, "critical": 15 },

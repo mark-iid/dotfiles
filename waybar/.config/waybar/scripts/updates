@@ -1,0 +1,22 @@
+#!/bin/sh
+# waybar custom/updates: count pending flatpak updates + whether an rpm-ostree
+# deployment is staged (the auto-update timers stage/download; this surfaces
+# "there's something to apply/reboot for"). Outputs JSON; hidden when up to date.
+export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+
+# flatpak: apps/runtimes with an update available (checks remotes; run infrequently)
+fp=$(flatpak remote-ls --updates --columns=application 2>/dev/null | grep -c .)
+
+# rpm-ostree: count staged deployments (a staged one needs a reboot to take effect)
+os=$(rpm-ostree status --json 2>/dev/null | python3 -c \
+    'import sys,json; print(sum(1 for d in json.load(sys.stdin).get("deployments",[]) if d.get("staged")))' 2>/dev/null)
+[ -z "$os" ] && os=0
+
+tot=$((fp + os))
+if [ "$tot" -gt 0 ]; then
+    tip="$fp flatpak update(s)"
+    [ "$os" -gt 0 ] && tip="$tip · rpm-ostree staged — reboot to apply"
+    printf '{"text":"󰚰 %s","class":"has-updates","tooltip":"%s"}\n' "$tot" "$tip"
+else
+    printf '{"text":""}\n'
+fi
