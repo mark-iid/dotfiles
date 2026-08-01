@@ -131,8 +131,16 @@ hotkey-overlay {
     skip-at-startup
 }
 
+// Cheatsheet popup (Mod+Slash): scripts/cheatsheet launches foot with this app-id
+// to render KEYBINDS.md; float it so it pops over the layout instead of tiling.
+window-rule {
+    match app-id="^cheatsheet$"
+    open-floating true
+}
+
 binds {
-    Mod+Shift+Slash { show-hotkey-overlay; }
+    Mod+Shift+Slash { show-hotkey-overlay; }      // niri's built-in raw bind list
+    Mod+Slash       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/cheatsheet"; }  // pretty KEYBINDS.md popup
 
     // Terminal, launcher, lock. ghostty is the primary terminal (DESIGN §2); the
     // shell fallback launches foot when ghostty isn't present (e.g. before the image

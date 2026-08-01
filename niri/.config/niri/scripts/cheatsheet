@@ -1,0 +1,28 @@
+#!/bin/sh
+# Floating keybind cheatsheet popup (bound to Mod+/). Renders KEYBINDS.md with glow
+# (pretty markdown), falling back to bat then less. Launches foot with
+# --app-id=cheatsheet, which a niri window-rule opens floating + centered. Dismiss
+# with q or Esc. Toggle: a second press closes the open popup instead of stacking.
+#
+# niri-spawned processes don't get brew on PATH, so add it (glow/bat live there).
+[ -x /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+# Toggle off if a cheatsheet window is already open.
+if niri msg -j windows 2>/dev/null | grep -q '"app_id": *"cheatsheet"'; then
+    pkill -f 'app-id=cheatsheet' 2>/dev/null
+    exit 0
+fi
+
+CHEAT="$HOME/dotfiles/KEYBINDS.md"
+[ -f "$CHEAT" ] || CHEAT="$HOME/.config/niri/KEYBINDS.md"
+[ -f "$CHEAT" ] || { command -v notify-send >/dev/null && notify-send cheatsheet "KEYBINDS.md not found"; exit 1; }
+
+if command -v glow >/dev/null 2>&1; then
+    viewer="glow -p '$CHEAT'"
+elif command -v bat >/dev/null 2>&1; then
+    viewer="bat --style=plain --paging=always --language=markdown '$CHEAT'"
+else
+    viewer="less '$CHEAT'"
+fi
+
+exec foot --app-id=cheatsheet --window-size-chars=110x48 -- sh -c "$viewer"

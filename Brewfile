@@ -7,6 +7,7 @@ brew "zsh-autosuggestions"
 brew "zsh-fast-syntax-highlighting"
 brew "eza"
 brew "bat"
+brew "glow"          # markdown renderer — powers the Mod+/ keybind cheatsheet popup
 brew "ugrep"
 brew "zoxide"
 brew "direnv"
