@@ -11,6 +11,7 @@ brew "glow"          # markdown renderer — powers the Mod+/ keybind cheatsheet
 brew "rbw"           # Rust Bitwarden CLI + agent — powers the Mod+P password picker
 brew "btop"          # system monitor — click the waybar cpu/memory modules to open it
 brew "aerc"          # TUI email client (personal IMAP); password via rbw, config in ~/.config/aerc
+brew "w3m"           # HTML email renderer used by aerc's html filter
 brew "ugrep"
 brew "zoxide"
 brew "direnv"
