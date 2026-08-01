@@ -10,6 +10,7 @@ brew "bat"
 brew "glow"          # markdown renderer — powers the Mod+/ keybind cheatsheet popup
 brew "rbw"           # Rust Bitwarden CLI + agent — powers the Mod+P password picker
 brew "btop"          # system monitor — click the waybar cpu/memory modules to open it
+brew "alpine"        # TUI email client — personal IMAP (mark@mystikos.org); config in ~/.pinerc
 brew "ugrep"
 brew "zoxide"
 brew "direnv"
