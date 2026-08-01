@@ -169,6 +169,7 @@ binds {
     Mod+P       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-pick"; } // Passwords — rbw picker → clipboard (Bitwarden app can't copy on niri)
     Mod+O       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-otp"; }  // OTP — rbw TOTP code → clipboard
     Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
+    Mod+N       { spawn "flatpak" "run" "net.cozic.joplin_desktop"; }        // Notes (Joplin)
     Mod+Shift+D { spawn "sh" "-c" "exec $HOME/.local/bin/discord"; }         // Discord
 
     // Clipboard history picker.

@@ -12,6 +12,7 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+S` | Slack |
 | `Mod+P` | Passwords (rbw picker → clipboard) |
 | `Mod+O` | TOTP codes (rbw picker → clipboard) |
+| `Mod+N` | Notes (Joplin) |
 | `Mod+M` | Music (Supersonic) |
 | `Mod+Shift+D` | Discord |
 | `Mod+D` | App launcher (fuzzel — type any app) |
