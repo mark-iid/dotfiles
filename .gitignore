@@ -38,3 +38,6 @@ id_dsa
 
 # Thunar rewrites this on every exit (keybinding accel cache) — not worth versioning
 Thunar/.config/Thunar/accels.scm
+
+# btop rewrites this on every exit (runtime state baked in) — not worth versioning
+btop/.config/btop/btop.conf
