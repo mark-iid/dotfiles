@@ -127,6 +127,11 @@ spawn-at-startup "flatpak" "run" "com.github.wwmm.easyeffects" "--service-mode" 
 // OAuth token lives in ~/.config/rclone (never in the repo); this just starts the
 // user mount unit at login (systemd unit in the dotfiles systemd/ package).
 spawn-at-startup "systemctl" "--user" "start" "rclone-onedrive-iid.service"
+// Nextcloud desktop sync client (flatpak). --background starts it straight to the
+// tray (waybar's tray module shows the SNI icon) instead of popping its window,
+// mirroring EasyEffects' --hide-window. Account/creds live in the flatpak's own
+// config (~/.var/app/com.nextcloud.desktopclient.nextcloud), never in the repo.
+spawn-at-startup "flatpak" "run" "com.nextcloud.desktopclient.nextcloud" "--background"
 // Idle lock runs as a user service (swayidle.service, in dotfiles systemd/): lock
 // with gtklock after 5 min, DPMS the displays off after 10, lock before suspend.
 // Started here at login; the caffeine toggle (Mod+Shift+C) stops/starts it. Edit
