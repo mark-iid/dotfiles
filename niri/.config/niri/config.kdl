@@ -160,6 +160,13 @@ window-rule {
     open-floating true
 }
 
+// Matrix screensaver: swayidle launches foot --app-id matrix-screensaver running
+// cmatrix on idle (scripts/screensaver); open it fullscreen so it covers the bar.
+window-rule {
+    match app-id="^matrix-screensaver$"
+    open-fullscreen true
+}
+
 binds {
     Mod+Shift+Slash { show-hotkey-overlay; }      // niri's built-in raw bind list
     Mod+Slash       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/cheatsheet"; }  // pretty KEYBINDS.md popup
@@ -170,7 +177,7 @@ binds {
     // always opens *a* terminal.
     Mod+Return  { spawn "sh" "-c" "command -v ghostty >/dev/null 2>&1 && exec ghostty || exec foot"; }
     Mod+D       { spawn "fuzzel"; }
-    Mod+Escape  { spawn "swaylock" "-f"; }  // static locker (gtklock's live clock defeated the idle DPMS-off)
+    Mod+Escape  { spawn "sh" "-c" "exec gtklock -d -c $HOME/.config/gtklock/config.ini"; }  // lock now (gtklock: field + clock + fingerprint)
     // Caffeine: toggle stay-awake (stop idle-lock + block suspend) for presenting.
     Mod+Shift+C { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/caffeine-toggle"; }
     // Game mode: toggle touchpad disable-while-typing (also on the waybar bar).

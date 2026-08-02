@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Matrix screensaver + lock handoff for the niri session (swayidle "Mode B").
+#
+# Recreates the classic xscreensaver behaviour on Wayland: after the idle
+# timeout a full-screen cmatrix "screensaver" appears; the moment you touch the
+# keyboard/trackpad it tears down and gtklock takes over, so waking always
+# requires your password (or fingerprint). Wayland lockers can't render an
+# animated background
+# (the ext-session-lock surface blanks everything beneath it for security), so
+# the animation and the secure lock are two steps, not one — that handoff is the
+# only gap versus a true lock-first flow.
+#
+# Wired from swayidle.service:  timeout -> `screensaver start`
+#                               resume  -> `screensaver stop`
+# The niri window-rule matching app-id "matrix-screensaver" opens it fullscreen.
+#
+# cmatrix lives in Homebrew, which is NOT on niri's spawn PATH, so it's called
+# by absolute path (same reason aerc calls rbw by full path).
+set -u
+
+FOOT=/usr/bin/foot
+GTKLOCK=/usr/bin/gtklock
+GTKLOCK_CFG=$HOME/.config/gtklock/config.ini
+CMATRIX=/home/linuxbrew/.linuxbrew/bin/cmatrix
+APPID=matrix-screensaver
+
+# Kill only our screensaver window: real foot procs whose cmdline carries the
+# app-id. Matching /proc (not this script's args) keeps it self-safe.
+kill_saver() {
+    local p
+    for p in $(pgrep -x foot 2>/dev/null); do
+        grep -qa "$APPID" "/proc/$p/cmdline" 2>/dev/null && kill "$p" 2>/dev/null
+    done
+}
+
+saver_running() {
+    local p
+    for p in $(pgrep -x foot 2>/dev/null); do
+        grep -qa "$APPID" "/proc/$p/cmdline" 2>/dev/null && return 0
+    done
+    return 1
+}
+
+case "${1:-}" in
+    start)
+        # If already locked (e.g. manual Mod+Escape), leave the lock alone.
+        pgrep -x gtklock >/dev/null 2>&1 && exit 0
+        saver_running && exit 0
+        # Launch detached and return immediately: swayidle runs with -w (waits for
+        # each timeout command), so blocking here would stop it from ever firing
+        # the resume/dismiss handler until the saver exited.
+        setsid "$FOOT" --app-id "$APPID" "$CMATRIX" -ba -u 3 >/dev/null 2>&1 </dev/null &
+        ;;
+    stop)
+        kill_saver
+        # Lock on wake; don't stack a second locker if one is somehow up.
+        pgrep -x gtklock >/dev/null 2>&1 || "$GTKLOCK" -d -c "$GTKLOCK_CFG"
+        ;;
+    *)
+        echo "usage: ${0##*/} {start|stop}" >&2
+        exit 2
+        ;;
+esac

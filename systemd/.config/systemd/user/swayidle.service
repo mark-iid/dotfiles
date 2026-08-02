@@ -5,10 +5,20 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-# Lock with swaylock after 5 min; DPMS the displays off after 10 (restored on
-# activity); lock before suspend. Single source of truth for the idle policy —
-# niri starts this at login and the caffeine toggle stops/starts it. swaylock (not
-# gtklock) on purpose: gtklock's live clock repaints every minute and re-wakes the
-# panel, so the DPMS-off never stuck overnight; swaylock is static while idle.
-ExecStart=/usr/bin/swayidle -w timeout 300 'pgrep -x swaylock || swaylock -f' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x swaylock || swaylock -f'
+# gtklock launched from here (screensaver stop / before-sleep) doesn't inherit
+# niri's environment{}, so give it the dark GTK theme explicitly — otherwise it
+# falls back to light Adwaita and PAM prompts (the fingerprint message) render
+# white-on-white. (Mod+Escape's gtklock already gets this from niri.)
+Environment=GTK_THEME=Adwaita:dark
+# Idle policy (single source of truth; niri starts this at login, the caffeine
+# toggle Mod+Shift+C stops/starts it):
+#   5 min  -> matrix screensaver (scripts/screensaver start). On activity it tears
+#             down and gtklock takes over (resume -> screensaver stop), so waking
+#             always needs the password/fingerprint — "Mode B", classic xscreensaver.
+#   10 min -> DPMS the displays off (restored on activity).
+#   suspend-> lock first.
+# Blanking is driven by *input* idle (ext-idle-notify), NOT by lack of repaints:
+# a verified test showed the panel blanks fine while an animation repaints every
+# second, so the earlier "a live clock re-wakes the panel" rationale was wrong.
+ExecStart=/usr/bin/swayidle -w timeout 300 '%h/.config/niri/scripts/screensaver start' resume '%h/.config/niri/scripts/screensaver stop' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x gtklock || gtklock -d -c %h/.config/gtklock/config.ini'
 Restart=on-failure

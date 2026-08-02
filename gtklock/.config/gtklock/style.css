@@ -1,0 +1,84 @@
+/* gtklock — Norton palette, matching the greeter/wallpaper:
+   navy #000080, border #5555ff, cyan #00ffff, white #ffffff.
+   Selectors are gtklock's real widget IDs (from the binary): #clock-label,
+   #date-label, #input-field, #input-label, #warning-label, #error-label,
+   #message-box, #message-scrolled-window, #unlock-button, #window-box, etc.
+   Message/info containers are forced transparent so PAM prompts (e.g. the
+   fingerprint "place finger" message) render as cyan-on-navy, not white-on-white
+   when the light GTK theme leaks in. */
+
+window {
+    background-color: #000080;
+}
+
+/* Let the navy window show through every container. */
+#window-box,
+#body-grid,
+#body-revealer,
+#time-box,
+#info-box,
+#message-box,
+#message-revealer,
+#message-scrolled-window {
+    background-color: transparent;
+}
+
+label {
+    color: #ffffff;
+    font-family: monospace;
+}
+
+/* The big clock + date = the live "what's happening" indicator. */
+#clock-label {
+    color: #00ffff;
+    font-family: monospace;
+    font-size: 64px;
+    font-weight: bold;
+}
+#date-label {
+    color: #ffffff;
+    font-family: monospace;
+    font-size: 18px;
+}
+
+/* PAM prompts — the fingerprint "place finger on sensor" message shows here. */
+#input-label,
+#warning-label,
+#message-scrolled-window,
+#message-scrolled-window text {
+    color: #00ffff;
+    background-color: transparent;
+    font-family: monospace;
+}
+#error-label {
+    color: #ff0000;
+    font-family: monospace;
+}
+
+/* Password field. */
+#input-field {
+    background-color: #00005f;
+    color: #ffffff;
+    caret-color: #00ffff;
+    border: 2px solid #5555ff;
+    border-radius: 0;
+    padding: 8px 12px;
+    font-family: monospace;
+}
+#input-field:focus {
+    border-color: #00ffff;
+}
+
+/* Unlock button. */
+#unlock-button {
+    background: #000080;
+    color: #ffffff;
+    border: 2px solid #5555ff;
+    border-radius: 0;
+    padding: 6px 14px;
+    font-family: monospace;
+}
+#unlock-button:hover {
+    background: #5555ff;
+    color: #ffffff;
+}
