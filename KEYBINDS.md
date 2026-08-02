@@ -15,6 +15,7 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+N` | Notes (Joplin) |
 | `Mod+M` | Music (Supersonic) |
 | `Mod+Shift+D` | Discord |
+| `Mod+G` | Comms screen (fresh workspace: Evolution ∣ Slack / Discord) |
 | `Mod+D` | App launcher (fuzzel — type any app) |
 
 ## 🖥 System & tools

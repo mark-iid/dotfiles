@@ -196,6 +196,7 @@ binds {
     Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
     Mod+N       { spawn "flatpak" "run" "net.cozic.joplin_desktop"; }        // Notes (Joplin)
     Mod+Shift+D { spawn "sh" "-c" "exec $HOME/.local/bin/discord"; }         // Discord
+    Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord
 
     // Clipboard history picker.
     Mod+V { spawn "sh" "-c" "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }

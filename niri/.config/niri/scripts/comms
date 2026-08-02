@@ -1,0 +1,85 @@
+#!/bin/sh
+# comms — lay out the messaging apps as a single "virtual screen":
+#
+#   +----------------------+-----------+
+#   |                      |  Slack    |
+#   |      Evolution       +-----------+
+#   |                      |  Discord  |
+#   +----------------------+-----------+
+#
+# Bound to Mod+G. Moves to a fresh empty workspace, gathers the three apps there
+# (reusing already-open windows, launching any that are missing), and tiles them:
+# Evolution fills the left column, Slack over Discord share the right, 50/50.
+# Re-running just re-gathers onto a new empty workspace — the apps are all
+# single-instance, so nothing is duplicated.
+
+EVO_ID=org.gnome.Evolution
+SLACK_ID=com.slack.Slack
+DISCORD_ID=discord
+
+EVO_CMD="/usr/bin/evolution"
+SLACK_CMD="flatpak run com.slack.Slack"
+DISCORD_CMD="$HOME/.local/bin/discord"
+
+WS=comms   # transient name pinned on the target workspace so the reference stays
+           # valid even as niri renumbers dynamic workspaces while we move windows.
+
+# Id of the first open window for an app-id, or empty.
+win_id() { niri msg --json windows | jq -r --arg a "$1" 'map(select(.app_id==$a)) | first | .id // empty'; }
+
+# Block until a window with the given app-id exists (up to ~30s for cold starts).
+wait_for() {
+  i=0
+  while [ "$i" -lt 60 ]; do
+    [ -n "$(win_id "$1")" ] && return 0
+    sleep 0.5
+    i=$((i + 1))
+  done
+  return 1
+}
+
+# Target = the trailing empty workspace on the focused output (niri always keeps
+# exactly one empty workspace at the end of each output's list). Pin a name on it.
+out=$(niri msg --json workspaces | jq -r '.[] | select(.is_focused) | .output')
+target=$(niri msg --json workspaces | jq -r --arg o "$out" \
+  '[.[] | select(.output==$o and .active_window_id==null)] | sort_by(.idx) | last | .idx // empty')
+[ -z "$target" ] && exit 1
+niri msg action focus-workspace "$target"
+niri msg action set-workspace-name "$WS"
+
+# Gather each app onto the workspace: move an existing window there by id (as its
+# own column — moving one window out of a stack un-stacks it), or launch it fresh.
+gather() {
+  id=$(win_id "$1")
+  if [ -n "$id" ]; then
+    niri msg action move-window-to-workspace --window-id "$id" --focus false "$WS"
+  else
+    niri msg action focus-workspace "$WS"
+    setsid sh -c "$2" >/dev/null 2>&1 &
+    wait_for "$1" || return 1
+  fi
+}
+gather "$EVO_ID" "$EVO_CMD"
+gather "$SLACK_ID" "$SLACK_CMD"
+gather "$DISCORD_ID" "$DISCORD_CMD"
+
+# Order the columns left-to-right as [Evolution, Slack, Discord], by absolute
+# position so it doesn't depend on arrival order.
+focus_col() { id=$(win_id "$1"); [ -n "$id" ] && niri msg action focus-window --id "$id"; }
+focus_col "$EVO_ID";     niri msg action move-column-to-first
+focus_col "$SLACK_ID";   niri msg action move-column-to-last
+focus_col "$DISCORD_ID"; niri msg action move-column-to-last
+
+# Stack Discord under Slack: Discord's left neighbour is now Slack, and a consumed
+# window lands at the bottom of the target column -> Slack on top, Discord below.
+focus_col "$DISCORD_ID"; niri msg action consume-or-expel-window-left
+
+# Split the two columns 50/50 (Discord's min width may nudge it, that's fine).
+niri msg action set-column-width "50%"
+niri msg action focus-column-left
+niri msg action set-column-width "50%"
+
+# Drop the transient name so it's an ordinary dynamic workspace again (it still
+# holds the three windows, so it won't be reclaimed; the next run picks a new one).
+focus_col "$EVO_ID"
+niri msg action unset-workspace-name
