@@ -110,10 +110,10 @@ spawn-at-startup "wl-clip-persist" "--clipboard" "both"
 spawn-at-startup "nm-applet" "--indicator"
 // blueman-applet dropped: the waybar `bluetooth` module shows status and opens
 // blueman-manager on click for pairing (bluetoothd still runs the stack).
-// Solid Norton navy wallpaper (#000080), the exact page background from
-// markearnest.net's norton-simple theme. niri has no background of its own, so
-// swaybg paints one; -c takes RRGGBB without the leading '#'.
-spawn-at-startup "swaybg" "-c" "000080"
+// Wallpaper: niri has no background of its own, so swaybg paints one. -i loads an
+// image; -m fill scales it to cover the output, cropping overflow. -c sets the
+// fallback color shown behind letterboxing / before the image loads.
+spawn-at-startup "swaybg" "-i" "/var/home/mark/Pictures/digital-security-lock-uhd-4k-wallpaperdark.jpg" "-m" "fill" "-c" "000080"
 // EasyEffects speaker DSP for the Framework 13 (cab404/framework-dsp presets in
 // ~/.var/app/.../easyeffects/output; "Gracefu's Edits" recommended). Runs as a
 // background service and reapplies the last-loaded output preset every login, so
