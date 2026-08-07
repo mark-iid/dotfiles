@@ -5,7 +5,8 @@
 }
 
 window#waybar {
-    background: rgba(26, 27, 38, 0.92);
+    /* Opaque: avoid niri alpha-blending the bar (see ghostty/foot render glitch). */
+    background: rgb(26, 27, 38);
     color: #c0caf5;
 }
 
