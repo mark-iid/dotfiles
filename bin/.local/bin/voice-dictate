@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# voice-dictate — toggle push-to-talk dictation for the niri session.
+#   1st invocation: start recording (16 kHz mono, what whisper wants).
+#   2nd invocation: stop, transcribe with whisper.cpp, type into focused window.
+# Runs inside the `voice` toolbox; host niri binds a key to:  toolbox run -c voice voice-dictate
+set -euo pipefail
+
+STATE=/tmp/voice-dictate
+WAV=$STATE.wav
+PIDF=$STATE.pid
+WHISPER="$HOME/.local/share/whisper.cpp/build/bin/whisper-cli"
+MODEL="$HOME/.local/share/whisper.cpp/models/ggml-base.en.bin"
+
+notify() { notify-send -t 2000 -a voice-dictate "$1" "${2:-}" 2>/dev/null || true; }
+
+if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
+    # --- stop + transcribe ---
+    kill "$(cat "$PIDF")" 2>/dev/null || true
+    rm -f "$PIDF"
+    sleep 0.2                       # let pw-record flush the WAV header
+    notify "🎤 transcribing…"
+    # -nt no timestamps, -np no progress. Strip whisper's non-speech noise:
+    # [BLANK_AUDIO], (dramatic music), *clears throat*, etc.
+    TEXT=$("$WHISPER" -m "$MODEL" -f "$WAV" -nt -np 2>/dev/null \
+             | tr '\n' ' ' \
+             | sed 's/\[[^]]*\]//g; s/([^)]*)//g; s/\*[^*]*\*//g; s/  */ /g; s/^ *//; s/ *$//')
+    if [ -n "$TEXT" ]; then
+        wtype "$TEXT"
+        notify "typed" "$TEXT"
+    else
+        notify "no speech detected"
+    fi
+else
+    # --- start recording ---
+    notify "🎤 recording…" "press the key again to stop"
+    setsid pw-record --rate 16000 --channels 1 --format s16 "$WAV" >/dev/null 2>&1 &
+    echo $! > "$PIDF"
+fi
