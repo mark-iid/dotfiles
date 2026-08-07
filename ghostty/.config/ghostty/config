@@ -7,7 +7,9 @@ font-size = 11
 # Port of the previous foot look (Tokyo Night storm background/foreground).
 background = 1a1b26
 foreground = c0caf5
-background-opacity = 0.96
+# Opaque: transparency made niri alpha-blend every frame, which produced a
+# transient red garbled band at the window bottom on this AMD APU (GTK4 + amdgpu).
+background-opacity = 1.0
 
 cursor-style = block
 cursor-style-blink = true
