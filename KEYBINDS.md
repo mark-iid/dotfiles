@@ -28,6 +28,14 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+Shift+G` | Game mode (toggle touchpad disable-while-typing) |
 | `Mod+Shift+/` | Show hotkey overlay |
 
+## 🎤 Voice
+| Key | Action |
+|---|---|
+| `Mod+T` | Dictation — speak, it types into the focused window (whisper) |
+| `Mod+Shift+T` | Command mode — control niri by voice (toggle on / off) |
+
+Command-mode phrases: **focus** / **move** *left · right · up · down* ∣ **close window** ∣ **full screen** ∣ **maximize** ∣ **center** ∣ **next** / **previous workspace** ∣ **workspace** *one…nine*
+
 ## 🪟 Windows
 | Key | Action |
 |---|---|
