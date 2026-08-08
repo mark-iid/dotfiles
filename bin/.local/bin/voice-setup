@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# voice-setup — (re)provision the `voice` toolbox that backs the voice tooling.
+#
+# Rebuilds everything the host-side voice scripts depend on, idempotently:
+#   - the `voice` toolbox container
+#   - whisper.cpp + the base.en model       (dictation: bin/voice-dictate)
+#   - vosk (pip) + small-en model           (WM control: bin/voice-listen)
+#   - wtype / pw-record / libnotify         (inside the container)
+#
+# wtype is ALSO baked into the host image (recipes/recipe.yml). The heavy STT
+# engines and models deliberately stay out of the image and live here instead.
+# Run once after a clean install (after `stow bin`). Safe to re-run.
+set -euo pipefail
+
+CONTAINER=voice
+SHARE="$HOME/.local/share"
+WHISPER_MODEL=base.en
+VOSK_MODEL=vosk-model-small-en-us-0.15
+VOSK_URL="https://alphacephei.com/vosk/models/${VOSK_MODEL}.zip"
+
+say() { printf '\n\033[1;36m==> %s\033[0m\n' "$1"; }
+
+# --- 1. container ---------------------------------------------------------
+if podman container exists "$CONTAINER" 2>/dev/null; then
+    say "toolbox '$CONTAINER' already exists"
+else
+    say "creating toolbox '$CONTAINER'"
+    toolbox create -y "$CONTAINER"
+fi
+
+# --- 2. container packages ------------------------------------------------
+say "installing container packages"
+toolbox run -c "$CONTAINER" sudo dnf install -y \
+    git cmake gcc-c++ make curl unzip \
+    wtype pipewire-utils libnotify \
+    python3-pip
+
+# --- 3. whisper.cpp + model (dictation) -----------------------------------
+say "building whisper.cpp + fetching $WHISPER_MODEL model"
+toolbox run -c "$CONTAINER" bash -lc "
+    set -e
+    mkdir -p '$SHARE'
+    cd '$SHARE'
+    [ -d whisper.cpp ] || git clone --depth=1 https://github.com/ggml-org/whisper.cpp
+    cd whisper.cpp
+    if [ ! -x build/bin/whisper-cli ]; then
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build -j --config Release
+    fi
+    [ -f models/ggml-${WHISPER_MODEL}.bin ] || sh ./models/download-ggml-model.sh ${WHISPER_MODEL}
+"
+
+# --- 4. vosk + model (WM voice control) -----------------------------------
+say "installing vosk + fetching $VOSK_MODEL"
+toolbox run -c "$CONTAINER" bash -lc "
+    set -e
+    python3 -c 'import vosk' 2>/dev/null || pip install --user vosk
+    cd '$SHARE'
+    if [ ! -d '$VOSK_MODEL' ]; then
+        curl -sLO '$VOSK_URL'
+        unzip -q '${VOSK_MODEL}.zip' && rm -f '${VOSK_MODEL}.zip'
+    fi
+"
+
+say "done — Mod+T dictates, Mod+Shift+T toggles niri voice command mode"
