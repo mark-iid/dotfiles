@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""voice-listen — grammar-constrained Vosk recognizer for niri voice control.
+
+Reads 16 kHz mono s16 PCM on stdin (piped from pw-record), recognizes only the
+fixed command grammar below, and prints the matching `niri msg action` argument
+line to stdout. The host side runs `niri msg action <line>`. Recognition lives
+here in the toolbox; actuation stays on the host where niri is.
+"""
+import json
+import os
+import sys
+
+from vosk import Model, KaldiRecognizer, SetLogLevel
+
+# Spoken phrase -> `niri msg action` argument line (may include args).
+COMMANDS = {
+    "focus left": "focus-column-left",
+    "focus right": "focus-column-right",
+    "focus up": "focus-window-up",
+    "focus down": "focus-window-down",
+    "move left": "move-column-left",
+    "move right": "move-column-right",
+    "move up": "move-window-up",
+    "move down": "move-window-down",
+    "close": "close-window",
+    "close window": "close-window",
+    "full screen": "fullscreen-window",
+    "maximize": "maximize-column",
+    "center": "center-column",
+    "next workspace": "focus-workspace-down",
+    "previous workspace": "focus-workspace-up",
+    "workspace one": "focus-workspace 1",
+    "workspace two": "focus-workspace 2",
+    "workspace three": "focus-workspace 3",
+    "workspace four": "focus-workspace 4",
+    "workspace five": "focus-workspace 5",
+    "workspace six": "focus-workspace 6",
+    "workspace seven": "focus-workspace 7",
+    "workspace eight": "focus-workspace 8",
+    "workspace nine": "focus-workspace 9",
+}
+
+MODEL_DIR = os.path.expanduser("~/.local/share/vosk-model-small-en-us-0.15")
+
+
+def main():
+    SetLogLevel(-1)  # silence Vosk's kaldi chatter on stderr
+    model = Model(MODEL_DIR)
+    # Constrain decoding to just our phrases; [unk] catches everything else.
+    grammar = json.dumps(list(COMMANDS.keys()) + ["[unk]"])
+    rec = KaldiRecognizer(model, 16000, grammar)
+
+    stdin = sys.stdin.buffer
+    while True:
+        data = stdin.read(4000)
+        if not data:
+            break
+        if rec.AcceptWaveform(data):
+            text = json.loads(rec.Result()).get("text", "").strip()
+            action = COMMANDS.get(text)
+            if action:
+                print(action, flush=True)
+
+
+if __name__ == "__main__":
+    main()

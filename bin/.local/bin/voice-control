@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# voice-control — toggle voice command mode for niri.
+#   On:  capture mic (host) -> Vosk recognizer (voice toolbox) -> niri msg action (host).
+#   Off: kill the whole pipeline.
+# Recognition runs in the container; actuation runs here where `niri` lives.
+# Bound in niri to a key (Mod+Shift+T). Say e.g. "focus left", "close window",
+# "workspace three", "full screen". Full grammar: ~/.local/bin/voice-listen.
+set -euo pipefail
+
+PIDF=/tmp/voice-control.pgid
+notify() { notify-send -t 2500 -a voice-control "$1" "${2:-}" 2>/dev/null || true; }
+
+if [ -f "$PIDF" ] && kill -0 -- "-$(cat "$PIDF")" 2>/dev/null; then
+    # --- stop: kill the whole process group ---
+    kill -- "-$(cat "$PIDF")" 2>/dev/null || true
+    rm -f "$PIDF"
+    notify "🎙️ command mode OFF"
+else
+    # --- start: launch the pipeline in its own session (setsid = new pgid) ---
+    notify "🎙️ command mode ON" "focus left · move right · close window · workspace three · full screen"
+    setsid bash -c '
+        pw-record --rate 16000 --channels 1 --format s16 - \
+        | toolbox run -c voice python3 "$HOME/.local/bin/voice-listen" \
+        | while read -r act; do
+            [ -n "$act" ] && niri msg action $act
+          done
+    ' >/dev/null 2>&1 &
+    echo $! > "$PIDF"
+fi

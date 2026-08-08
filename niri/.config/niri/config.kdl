@@ -198,6 +198,7 @@ binds {
     Mod+Shift+D { spawn "sh" "-c" "exec $HOME/.local/bin/discord"; }         // Discord
     Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord
     Mod+T       { spawn "sh" "-c" "exec toolbox run -c voice $HOME/.local/bin/voice-dictate"; } // Talk — toggle voice dictation (whisper.cpp in `voice` toolbox → wtype into focused window)
+    Mod+Shift+T { spawn "sh" "-c" "exec $HOME/.local/bin/voice-control"; } // Talk+control — toggle niri voice command mode (Vosk grammar → niri msg action)
 
     // Clipboard history picker.
     Mod+V { spawn "sh" "-c" "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
