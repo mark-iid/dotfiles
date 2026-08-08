@@ -12,13 +12,30 @@ Type=simple
 Environment=GTK_THEME=Adwaita:dark
 # Idle policy (single source of truth; niri starts this at login, the caffeine
 # toggle Mod+Shift+C stops/starts it):
-#   5 min  -> matrix screensaver (scripts/screensaver start). On activity it tears
-#             down and gtklock takes over (resume -> screensaver stop), so waking
-#             always needs the password/fingerprint — "Mode B", classic xscreensaver.
-#   10 min -> DPMS the displays off (restored on activity).
-#   suspend-> lock first.
+#   5 min   -> matrix screensaver (scripts/screensaver start). On activity it tears
+#              down and gtklock takes over (resume -> screensaver stop) — "Mode B",
+#              classic xscreensaver.
+#   5.5 min -> LOCK BACKSTOP: gtklock unconditionally, whether or not anyone has
+#              touched the machine. See below.
+#   10 min  -> DPMS the displays off (restored on activity).
+#   suspend -> lock first.
+#
+# WHY THE BACKSTOP EXISTS. Mode B alone locks only on *resume*, which leaves two
+# real holes: (1) from minute 5 until someone next touches the laptop the session
+# is unlocked, just hidden behind a cmatrix window — and after minute 10, behind a
+# blank screen; (2) `screensaver stop` is fail-open — it kills the cmatrix window
+# first and only then tries gtklock, so if gtklock ever fails to start you are
+# left staring at a live desktop. The extra `timeout 330` closes both: 30s after
+# the screensaver appears the session is genuinely locked, so the resume path is
+# only ever *raising an existing* lock, never establishing one. The `pgrep` guard
+# keeps it from stacking a second locker on top of a manual Mod+Escape lock.
+#
+# gtklock's surface covers the cmatrix window; cmatrix keeps running underneath
+# and is reaped by `screensaver stop` on resume. The 600s DPMS timeout still fires
+# normally while locked.
+#
 # Blanking is driven by *input* idle (ext-idle-notify), NOT by lack of repaints:
 # a verified test showed the panel blanks fine while an animation repaints every
 # second, so the earlier "a live clock re-wakes the panel" rationale was wrong.
-ExecStart=/usr/bin/swayidle -w timeout 300 '%h/.config/niri/scripts/screensaver start' resume '%h/.config/niri/scripts/screensaver stop' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x gtklock || gtklock -d -c %h/.config/gtklock/config.ini'
+ExecStart=/usr/bin/swayidle -w timeout 300 '%h/.config/niri/scripts/screensaver start' resume '%h/.config/niri/scripts/screensaver stop' timeout 330 'pgrep -x gtklock || gtklock -d -c %h/.config/gtklock/config.ini' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'pgrep -x gtklock || gtklock -d -c %h/.config/gtklock/config.ini'
 Restart=on-failure
