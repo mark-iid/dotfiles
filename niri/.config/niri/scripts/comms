@@ -19,7 +19,10 @@ DISCORD_ID=discord
 
 EVO_CMD="/usr/bin/evolution"
 SLACK_CMD="flatpak run com.slack.Slack"
-DISCORD_CMD="$HOME/.local/bin/discord"
+# Discord is a flatpak again as of 2026-08-08 (the native ~/.local/bin launcher
+# is gone). DISCORD_ID stays "discord" — the flatpak reports the same app-id, so
+# the win_id/wait_for matching above is unaffected.
+DISCORD_CMD="flatpak run com.discordapp.Discord"
 
 WS=comms   # transient name pinned on the target workspace so the reference stays
            # valid even as niri renumbers dynamic workspaces while we move windows.
