@@ -1,0 +1,17 @@
+# chawan (cha) — TUI web browser. Deliberately minimal; chawan's built-in
+# defaults are sensible and it writes no config of its own on first run, so
+# everything here is a considered override rather than a dump.
+#
+# Reference: https://chawan.net/doc/ — the doc/ directory (image.md, css.md,
+# terminal.md) is NOT shipped in the Homebrew bottle, only README.md, so consult
+# the site rather than looking for it under the Cellar path.
+
+[buffer]
+# Inline images. ghostty implements the Kitty graphics protocol, which is the
+# same reason yazi's previews render properly rather than falling back to ASCII,
+# so chawan can display real images here.
+#
+# Set explicitly rather than left to the default: the shipped docs that would
+# state the default are absent from the bottle (see above), so this pins the
+# behaviour instead of assuming it.
+images = true
