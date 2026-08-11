@@ -41,6 +41,29 @@ command -v direnv   >/dev/null && eval "$(direnv hook zsh)"
 # cross-shell search behaviour is configured in ~/.config/atuin/config.toml.
 command -v atuin    >/dev/null && eval "$(atuin init zsh)"
 
+# --- yazi: TUI file manager, cd-on-quit ----------------------------------------
+# yazi leaves the shell where it started unless it is wrapped. --cwd-file makes it
+# write the directory it ended in, and the wrapper cds there: `y` to browse, `q` to
+# quit and follow, `Q` to quit without moving. Guarded like the plugins above so a
+# machine without yazi (or a fresh macOS box) still gets a working shell.
+#
+# $(<file) is a zsh builtin read rather than cat, on purpose. zsh expands aliases
+# when it PARSES a function body, so a `cat` here would pick up the
+# `bat --paging=never` alias if that alias were defined earlier in the file. It is
+# defined below this block today, so it would not bite right now — the builtin read
+# just removes the dependency on that ordering, since moving either section would
+# silently start piping the cwd through bat.
+if command -v yazi >/dev/null; then
+  y() {
+    local tmp cwd
+    tmp="$(mktemp -t yazi-cwd.XXXXXX)" || return 1
+    yazi "$@" --cwd-file="$tmp"
+    cwd="$(<"$tmp")"
+    [[ -n "$cwd" && "$cwd" != "$PWD" ]] && builtin cd -- "$cwd"
+    command rm -f -- "$tmp"
+  }
+fi
+
 # --- modern coreutils aliases (all from brew) ----------------------------------
 command -v eza >/dev/null && {
   alias ls='eza --group-directories-first'
