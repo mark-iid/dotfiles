@@ -1,48 +1,64 @@
 # restic exclude patterns for kb3lyb-backup.
 #
-# Rule of thumb: exclude anything a script can rebuild. Everything here is either
-# a cache, or reproducible from something already in version control.
+# SYNTAX WARNING: `#` only starts a comment at the BEGINNING of a line. A trailing
+# comment becomes part of the pattern, so
+#
+#     /home/mark/.sdkman        # JDKs, re-downloadable
+#
+# is one literal path ending in "# JDKs, re-downloadable" and matches nothing at
+# all. restic does not warn about patterns that never match, so the exclusion just
+# silently does not happen — that is exactly how the first snapshot ended up with
+# .sdkman, nvim/mason and the podman overlay store in it. Keep every comment on
+# its own line.
+#
+# Rule of thumb: exclude anything a script can rebuild. Everything here is either a
+# cache or reproducible from something already in version control.
 #
 # NOT excluded on purpose:
-#   ~/.var/app        flatpak app DATA lives here (Joplin notes, client configs,
-#                     Bitwarden state) mixed in with caches — only the cache
-#                     subdirectories are dropped, below.
-#   ~/dotfiles        already on GitHub, but it is tiny and having it inline makes
-#                     a bare-metal restore one step shorter.
-#   ~/src             git repos, but local branches and stashes are not pushed.
+#   ~/.var/app   flatpak app DATA lives here (Joplin notes, client configs,
+#                Bitwarden state) mixed with caches — only the cache subdirs go.
+#   ~/dotfiles   already on GitHub, but tiny, and inline makes a bare-metal
+#                restore one step shorter.
+#   ~/src        git repos, but local branches and stashes are not pushed.
 
 # --- network mounts (IMPORTANT) ---------------------------------------------------
 # ~/OneDrive-InstrumentalID is a fuse.rclone mount of the M365 OneDrive, not local
 # storage. kb3lyb-backup already passes --one-file-system, which skips it because
-# the mount is a different filesystem — this entry is belt and braces, and exists
-# mostly to make the hazard visible rather than implicit in a flag.
+# the mount is a different filesystem; this entry is belt and braces and makes the
+# hazard visible rather than implicit in a flag.
 #
 # Without either guard, restic would walk the mount and DOWNLOAD THE ENTIRE
-# ONEDRIVE in order to copy it onto the NAS: slow, expensive, and pointless since
-# OneDrive is already the second copy. It is also how `du -sh ~` came to report
-# 137G against df's 104G on /var/home — the extra 33G was OneDrive being listed
-# over the network.
+# ONEDRIVE to copy it onto the NAS: slow, expensive, and pointless since OneDrive
+# is already the second copy.
 /home/mark/OneDrive-InstrumentalID
 
-# --- caches ---------------------------------------------------------------------
+# --- caches -----------------------------------------------------------------------
 /home/mark/.cache
 /home/mark/.npm
 /home/mark/.var/app/*/cache
 /home/mark/.local/share/Trash
-/home/mark/.local/share/containers          # podman images, all re-pullable
 
-# --- reproducible tooling (rebuilt by kb3lyb-bootstrap) ---------------------------
-/home/mark/.local/share/nvim/lazy           # pinned by lazy-lock.json in dotfiles
-/home/mark/.local/share/nvim/mason          # ~465M of language servers, re-installable
-/home/mark/.sdkman                          # JDKs, re-downloadable via sdk install
-/home/mark/.local/share/JetBrains/Toolbox   # self-updating, re-downloaded by bootstrap
+# podman's overlay store. Also the source of the "permission denied" errors on the
+# first run: its layer directories are owned by subuid-mapped UIDs inside a user
+# namespace, so the plain user cannot read them. All re-pullable.
+/home/mark/.local/share/containers
+
+# --- reproducible tooling (rebuilt by kb3lyb-bootstrap) -----------------------------
+# pinned by lazy-lock.json, which IS in the dotfiles repo
+/home/mark/.local/share/nvim/lazy
+# language servers, re-installable via :Mason
+/home/mark/.local/share/nvim/mason
+# JDKs, re-downloadable with sdk install
+/home/mark/.sdkman
+# self-updating, re-downloaded by bootstrap
+/home/mark/.local/share/JetBrains/Toolbox
 /home/mark/.homebrew
 
-# --- game data (large, re-downloadable) -------------------------------------------
+# --- game data (large, re-downloadable) ---------------------------------------------
 /home/mark/.local/share/Steam
 /home/mark/.steam
 
-# --- ephemeral --------------------------------------------------------------------
+# --- ephemeral ----------------------------------------------------------------------
 *.tmp
 *.swp
 /home/mark/.local/state/nvim/swap
