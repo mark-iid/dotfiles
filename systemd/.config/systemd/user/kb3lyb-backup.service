@@ -1,5 +1,5 @@
 [Unit]
-Description=restic backup of $HOME + Nextcloud to nas1.crosscreek
+Description=restic backup of $HOME to nas1.crosscreek
 Documentation=file:%h/.local/bin/kb3lyb-backup
 # restic talks SFTP, so there is no point starting before the network is up.
 Wants=network-online.target
