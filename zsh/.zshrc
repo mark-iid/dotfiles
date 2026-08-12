@@ -11,6 +11,23 @@ elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
 fi
 BREW_PREFIX="$(brew --prefix 2>/dev/null)"
 
+# --- PATH ----------------------------------------------------------------------
+# ~/.local/bin holds the scripts stowed from the dotfiles `bin` package
+# (kb3lyb-backup, voice-dictate, voice-setup…) plus pip/pipx user installs.
+# Fedora's /etc/profile.d only adds it for login bash and it does not reliably
+# reach zsh here, which is why kb3lyb-bootstrap invokes voice-setup by absolute
+# path with a comment about it not being on PATH. Adding it once here fixes the
+# whole class rather than working around it per-caller.
+#
+# Guarded against re-sourcing: plain prepending would stack duplicates every time
+# you `source ~/.zshrc`.
+if [[ -d "$HOME/.local/bin" ]]; then
+  case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+  esac
+fi
+
 # --- completions ---------------------------------------------------------------
 autoload -Uz compinit && compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zcompdump"
 zstyle ':completion:*' menu select
