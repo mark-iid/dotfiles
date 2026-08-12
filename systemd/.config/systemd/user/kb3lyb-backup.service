@@ -1,0 +1,22 @@
+[Unit]
+Description=restic backup of $HOME + Nextcloud to nas1.crosscreek
+Documentation=file:%h/.local/bin/kb3lyb-backup
+# restic talks SFTP, so there is no point starting before the network is up.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/kb3lyb-backup
+
+# The first run uploads ~170G and can take hours on a slow link; later runs are
+# minutes. Bounded anyway so a hung SFTP session cannot pin the timer forever —
+# systemd kills it and the next run picks up where it left off (restic is
+# resumable: completed packs stay in the repo).
+TimeoutStartSec=6h
+
+# Backups are strictly background work. Idle I/O matters more than the nice value
+# here: without it, restic reading all of $HOME makes the desktop feel stalled.
+Nice=10
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle

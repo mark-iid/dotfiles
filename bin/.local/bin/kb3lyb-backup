@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# kb3lyb-backup — restic backup of $HOME + the Nextcloud tree to the TrueNAS.
+# Driven by kb3lyb-backup.timer (daily); safe to run by hand any time.
+#
+# WHAT IS BACKED UP, AND WHY THAT IS MUCH LESS THAN THE DISK HOLDS
+#
+#   $HOME                     ~85G after excludes
+#   /var/mnt/data/nextcloud    88G
+#
+# Everything else on the data drive is deliberately skipped: SteamLibrary (244G)
+# and games (92G) are re-downloadable, and re-fetching them is cheaper than
+# storing them forever. The OS is not backed up at all — it is a bootc image
+# rebuildable from the frameworkimage repo.
+#
+# Nextcloud IS backed up despite already syncing to the server, because sync is
+# replication, not backup: a local deletion propagates to both copies. That is not
+# hypothetical here — the client once sat for ~2 minutes pointed at an empty mount
+# after the expansion card was pulled while mounted, and only its own sanity check
+# stopped it deleting 88G server-side. Versioned snapshots are the actual defence.
+#
+# ENCRYPTION / THE PASSWORD
+#
+# restic encrypts client-side, so the NAS only ever stores opaque blobs. The flip
+# side: LOSE THE PASSWORD AND THE BACKUPS ARE WORTHLESS. There is no recovery path.
+# Keep a copy in Bitwarden (pw.mystikos.org) as well as the local password file —
+# the local file is for unattended runs, Bitwarden is for the disaster where this
+# laptop is the thing that died.
+#
+# The password file is NOT in the dotfiles repo (it is public; the pre-commit hook
+# would block it anyway). Create it once, on each machine:
+#
+#     mkdir -p ~/.config/restic
+#     rbw get restic-framework > ~/.config/restic/password   # or paste it
+#     chmod 600 ~/.config/restic/password
+#     restic init                                            # first time only
+#
+# REMOTE LAYOUT
+#
+# Default repo lives under mark's home dataset because /mnt/holocron/backups is
+# root-owned (it holds homeassistant/, pis/, proxmox/) and mark has an ssh key but
+# no passwordless sudo. To follow that convention properly, create a dataset via
+# the TrueNAS UI, chown it to mark, and point RESTIC_REPOSITORY at it — a restic
+# repo is a self-contained directory and can simply be moved.
+#
+# Set a ZFS snapshot task on whichever dataset holds the repo. It protects the
+# repo from this end: anything that can write backups can, in principle, corrupt
+# or delete them, and a snapshot on the NAS side is outside this machine's reach.
+set -euo pipefail
+
+REPO_DEFAULT="sftp:mark@nas1.crosscreek:/mnt/holocron/home/mark/restic/framework"
+export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-$REPO_DEFAULT}"
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-$HOME/.config/restic/password}"
+
+EXCLUDES="${EXCLUDES:-$HOME/.config/restic/excludes}"
+NEXTCLOUD="/var/mnt/data/nextcloud"
+
+say()  { printf '\033[1;34m>>> %s\033[0m\n' "$*"; }
+warn() { printf '\033[1;33m!!! %s\033[0m\n' "$*" >&2; }
+die()  { printf '\033[1;31m*** %s\033[0m\n' "$*" >&2; exit 1; }
+
+# --- preflight ------------------------------------------------------------------
+command -v restic >/dev/null || die "restic not installed (it is layered in the image; rpm-ostree upgrade?)"
+[[ -r "$RESTIC_PASSWORD_FILE" ]] || die "no password file at $RESTIC_PASSWORD_FILE — see the header for setup"
+[[ -r "$EXCLUDES" ]] || die "no exclude file at $EXCLUDES"
+
+# Refuse to back up an UNMOUNTED /var/mnt/data. Without this check the nextcloud
+# path would still exist (as an empty directory on the root filesystem) and restic
+# would happily record a snapshot containing nothing. Retention would then age out
+# the good snapshots behind it, turning a mount failure into silent data loss —
+# the same empty-directory trap that nearly cost the Nextcloud server copy.
+paths=("$HOME")
+if findmnt -no TARGET /var/mnt/data >/dev/null 2>&1; then
+    if [[ -d "$NEXTCLOUD" ]] && [[ -n "$(ls -A "$NEXTCLOUD" 2>/dev/null)" ]]; then
+        paths+=("$NEXTCLOUD")
+    else
+        warn "$NEXTCLOUD is mounted but empty — skipping it rather than recording an empty snapshot"
+    fi
+else
+    warn "/var/mnt/data is NOT mounted — backing up \$HOME only this run"
+fi
+
+say "repo: $RESTIC_REPOSITORY"
+say "paths: ${paths[*]}"
+
+# --- backup ---------------------------------------------------------------------
+# --exclude-caches honours CACHEDIR.TAG, which catches cargo/go/build caches that
+# the explicit list would otherwise have to chase.
+say "backing up"
+restic backup \
+    --verbose \
+    --exclude-file="$EXCLUDES" \
+    --exclude-caches \
+    --one-file-system \
+    "${paths[@]}"
+
+# --- retention ------------------------------------------------------------------
+# --prune actually reclaims space; without it forget only drops the snapshot
+# references and the data stays.
+say "applying retention (7 daily / 4 weekly / 12 monthly)"
+restic forget \
+    --keep-daily 7 \
+    --keep-weekly 4 \
+    --keep-monthly 12 \
+    --prune
+
+# --- integrity ------------------------------------------------------------------
+# Structural check every run (cheap: metadata only). It does NOT re-read pack data
+# — that is `restic check --read-data-subset=5%`, which is worth running monthly by
+# hand. And neither is a restore test: a backup that has not been restored once is
+# a hypothesis (DESIGN/SETUP §10). `restic mount ~/mnt` browses snapshots as files.
+say "checking repository structure"
+restic check
+
+say "backup complete"

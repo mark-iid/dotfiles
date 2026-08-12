@@ -1,0 +1,35 @@
+# restic exclude patterns for kb3lyb-backup.
+#
+# Rule of thumb: exclude anything a script can rebuild. Everything here is either
+# a cache, or reproducible from something already in version control.
+#
+# NOT excluded on purpose:
+#   ~/.var/app        flatpak app DATA lives here (Joplin notes, client configs,
+#                     Bitwarden state) mixed in with caches — only the cache
+#                     subdirectories are dropped, below.
+#   ~/dotfiles        already on GitHub, but it is tiny and having it inline makes
+#                     a bare-metal restore one step shorter.
+#   ~/src             git repos, but local branches and stashes are not pushed.
+
+# --- caches ---------------------------------------------------------------------
+/home/mark/.cache
+/home/mark/.npm
+/home/mark/.var/app/*/cache
+/home/mark/.local/share/Trash
+/home/mark/.local/share/containers          # podman images, all re-pullable
+
+# --- reproducible tooling (rebuilt by kb3lyb-bootstrap) ---------------------------
+/home/mark/.local/share/nvim/lazy           # pinned by lazy-lock.json in dotfiles
+/home/mark/.local/share/nvim/mason          # ~465M of language servers, re-installable
+/home/mark/.sdkman                          # JDKs, re-downloadable via sdk install
+/home/mark/.local/share/JetBrains/Toolbox   # self-updating, re-downloaded by bootstrap
+/home/mark/.homebrew
+
+# --- game data (large, re-downloadable) -------------------------------------------
+/home/mark/.local/share/Steam
+/home/mark/.steam
+
+# --- ephemeral --------------------------------------------------------------------
+*.tmp
+*.swp
+/home/mark/.local/state/nvim/swap

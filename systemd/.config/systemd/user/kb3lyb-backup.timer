@@ -1,0 +1,21 @@
+[Unit]
+Description=Daily restic backup to nas1.crosscreek
+Documentation=file:%h/.local/bin/kb3lyb-backup
+
+[Timer]
+OnCalendar=daily
+# Catch up after the laptop has been off or asleep — without this a machine that is
+# never up at the scheduled minute simply never backs up, which is the classic way
+# a backup silently stops existing.
+Persistent=true
+# Spread the start so it does not collide with flatpak-update.timer at midnight.
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target
+
+# NOTE: this is a USER timer, like brew-upgrade.timer. It only runs while a session
+# for this user exists, so it will not fire on a machine sitting at the greeter.
+# `loginctl enable-linger mark` makes user units run without a login if that ever
+# matters — deliberately not enabled here, since a laptop that is logged out is
+# usually closed and off the network anyway.
