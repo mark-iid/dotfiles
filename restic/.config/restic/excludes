@@ -11,6 +11,19 @@
 #                     a bare-metal restore one step shorter.
 #   ~/src             git repos, but local branches and stashes are not pushed.
 
+# --- network mounts (IMPORTANT) ---------------------------------------------------
+# ~/OneDrive-InstrumentalID is a fuse.rclone mount of the M365 OneDrive, not local
+# storage. kb3lyb-backup already passes --one-file-system, which skips it because
+# the mount is a different filesystem — this entry is belt and braces, and exists
+# mostly to make the hazard visible rather than implicit in a flag.
+#
+# Without either guard, restic would walk the mount and DOWNLOAD THE ENTIRE
+# ONEDRIVE in order to copy it onto the NAS: slow, expensive, and pointless since
+# OneDrive is already the second copy. It is also how `du -sh ~` came to report
+# 137G against df's 104G on /var/home — the extra 33G was OneDrive being listed
+# over the network.
+/home/mark/OneDrive-InstrumentalID
+
 # --- caches ---------------------------------------------------------------------
 /home/mark/.cache
 /home/mark/.npm
