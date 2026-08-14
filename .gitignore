@@ -41,3 +41,8 @@ Thunar/.config/Thunar/accels.scm
 
 # btop rewrites this on every exit (runtime state baked in) — not worth versioning
 btop/.config/btop/btop.conf
+
+# systemd writes these enablement links itself on `systemctl --user enable`, and
+# their targets are absolute /home/<user>/... paths that resolve for one username.
+# Which units to enable is recorded in kb3lyb-bootstrap (frameworkimage) instead.
+systemd/.config/systemd/user/*.target.wants/
