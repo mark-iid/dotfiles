@@ -27,10 +27,48 @@ DISCORD_CMD="flatpak run com.discordapp.Discord"
 WS=comms   # transient name pinned on the target workspace so the reference stays
            # valid even as niri renumbers dynamic workspaces while we move windows.
 
-# Id of the first open window for an app-id, or empty.
-win_id() { niri msg --json windows | jq -r --arg a "$1" 'map(select(.app_id==$a)) | first | .id // empty'; }
+snap() { niri msg --json windows; }
 
-# Block until a window with the given app-id exists (up to ~30s for cold starts).
+# Id of the workspace currently named $WS, or empty.
+ws_id() { niri msg --json workspaces | jq -r --arg n "$WS" '.[] | select(.name==$n) | .id'; }
+
+# An app's window in a snapshot, as "id column row workspace_id", or nothing.
+#
+# Only *tiled* windows count. Cold-starting Discord (and Electron apps in
+# general) first maps a small floating splash/updater window carrying the same
+# app-id; niri reports pos_in_scrolling_layout=null for floating windows. Acting
+# on one of those is what used to wreck the layout: every column action silently
+# no-ops against a floating window, and the real window then arrives seconds
+# later as its own fresh column.
+info() {
+  printf '%s\n' "$1" | jq -r --arg a "$2" '
+    [.[] | select(.app_id == $a and .layout.pos_in_scrolling_layout != null)]
+    | sort_by(.id) | first
+    | if . == null then empty
+      else "\(.id) \(.layout.pos_in_scrolling_layout[0]) \(.layout.pos_in_scrolling_layout[1]) \(.workspace_id)"
+      end'
+}
+
+# info() into $IID / $ICOL / $IROW / $IWS (all empty if the app has no window).
+read_info() {
+  _s=$1; _a=$2
+  IID=; ICOL=; IROW=; IWS=
+  # shellcheck disable=SC2046  # deliberate word-splitting of the four fields
+  set -- $(info "$_s" "$_a")
+  IID=$1; ICOL=$2; IROW=$3; IWS=$4
+}
+
+win_id() { read_info "$(snap)" "$1"; [ -n "$IID" ] && printf '%s\n' "$IID"; }
+
+focus_win() { _i=$(win_id "$1"); [ -n "$_i" ] && niri msg action focus-window --id "$_i"; }
+
+# How many windows share a column on the target workspace.
+col_count() {
+  printf '%s\n' "$1" | jq -r --argjson w "$2" --argjson c "$3" \
+    '[.[] | select(.workspace_id == $w and .layout.pos_in_scrolling_layout[0] == $c)] | length'
+}
+
+# Block until the app has a tiled window (up to ~30s for cold starts).
 wait_for() {
   i=0
   while [ "$i" -lt 60 ]; do
@@ -50,13 +88,15 @@ target=$(niri msg --json workspaces | jq -r --arg o "$out" \
 niri msg action focus-workspace "$target"
 niri msg action set-workspace-name "$WS"
 
-# Gather each app onto the workspace: move an existing window there by id (as its
-# own column — moving one window out of a stack un-stacks it), or launch it fresh.
+# Gather each app onto the workspace: move an existing window there by id, or
+# launch it fresh. $launched records whether anything had to be cold-started.
+launched=0
 gather() {
   id=$(win_id "$1")
   if [ -n "$id" ]; then
     niri msg action move-window-to-workspace --window-id "$id" --focus false "$WS"
   else
+    launched=1
     niri msg action focus-workspace "$WS"
     setsid sh -c "$2" >/dev/null 2>&1 &
     wait_for "$1" || return 1
@@ -66,23 +106,94 @@ gather "$EVO_ID" "$EVO_CMD"
 gather "$SLACK_ID" "$SLACK_CMD"
 gather "$DISCORD_ID" "$DISCORD_CMD"
 
-# Order the columns left-to-right as [Evolution, Slack, Discord], by absolute
-# position so it doesn't depend on arrival order.
-focus_col() { id=$(win_id "$1"); [ -n "$id" ] && niri msg action focus-window --id "$id"; }
-focus_col "$EVO_ID";     niri msg action move-column-to-first
-focus_col "$SLACK_ID";   niri msg action move-column-to-last
-focus_col "$DISCORD_ID"; niri msg action move-column-to-last
+# Impose the layout. Idempotent: works from any starting arrangement, so it can
+# be re-run to repair the layout after a late-arriving window disturbs it.
+arrange() {
+  wsid=$(ws_id)
+  [ -z "$wsid" ] && return 1
+  s=$(snap)
 
-# Stack Discord under Slack: Discord's left neighbour is now Slack, and a consumed
-# window lands at the bottom of the target column -> Slack on top, Discord below.
-focus_col "$DISCORD_ID"; niri msg action consume-or-expel-window-left
+  # 1. Pull back anything that isn't on the workspace (a freshly launched window
+  #    can land elsewhere if the focus moved while it was starting).
+  for app in "$EVO_ID" "$SLACK_ID" "$DISCORD_ID"; do
+    read_info "$s" "$app"
+    [ -z "$IID" ] && continue
+    [ "$IWS" = "$wsid" ] || niri msg action move-window-to-workspace --window-id "$IID" --focus false "$WS"
+  done
 
-# Split the two columns 50/50 (Discord's min width may nudge it, that's fine).
-niri msg action set-column-width "50%"
-niri msg action focus-column-left
-niri msg action set-column-width "50%"
+  # 2. Give each one its own column, so the ordering below is column ordering.
+  #    consume-or-expel-window-left expels the focused window out of a shared
+  #    column; the loop is bounded in case a column holds more than two.
+  for app in "$EVO_ID" "$SLACK_ID" "$DISCORD_ID"; do
+    n=0
+    while [ "$n" -lt 3 ]; do
+      s=$(snap)
+      read_info "$s" "$app"
+      [ -z "$IID" ] && break
+      [ "$(col_count "$s" "$wsid" "$ICOL")" -le 1 ] && break
+      niri msg action focus-window --id "$IID"
+      niri msg action consume-or-expel-window-left
+      n=$((n + 1))
+    done
+  done
+
+  # 3. Order the columns left-to-right as [Evolution, Slack, Discord], by
+  #    absolute position so it doesn't depend on arrival order.
+  focus_win "$EVO_ID"     && niri msg action move-column-to-first
+  focus_win "$SLACK_ID"   && niri msg action move-column-to-last
+  focus_win "$DISCORD_ID" && niri msg action move-column-to-last
+
+  # 4. Stack Discord under Slack: Discord's left neighbour is now Slack, and a
+  #    consumed window lands at the bottom of the target column -> Slack on top.
+  if [ -n "$(win_id "$SLACK_ID")" ] && focus_win "$DISCORD_ID"; then
+    niri msg action consume-or-expel-window-left
+  fi
+
+  # 5. Split the two columns 50/50 (Discord's min width may nudge it, that's fine).
+  niri msg action set-column-width "50%"
+  niri msg action focus-column-left
+  niri msg action set-column-width "50%"
+}
+
+# True when the three windows sit exactly as the diagram at the top describes.
+layout_ok() {
+  wsid=$(ws_id)
+  [ -z "$wsid" ] && return 1
+  snap | jq -e --arg e "$EVO_ID" --arg s "$SLACK_ID" --arg d "$DISCORD_ID" --argjson w "$wsid" '
+    def pick($a): [.[] | select(.app_id == $a and .layout.pos_in_scrolling_layout != null)]
+                  | sort_by(.id) | first;
+    pick($e) as $E | pick($s) as $S | pick($d) as $D |
+    $E != null and $S != null and $D != null
+    and ([$E, $S, $D] | all(.workspace_id == $w))
+    and $E.layout.pos_in_scrolling_layout == [1, 1]
+    and $S.layout.pos_in_scrolling_layout == [2, 1]
+    and $D.layout.pos_in_scrolling_layout == [2, 2]
+  ' >/dev/null 2>&1
+}
+
+arrange
+
+# A cold-started app is not done opening windows when its first one maps: Discord
+# swaps its splash for the real window a few seconds in, and the replacement
+# arrives as a fresh column that undoes the arrangement. Watch for a while and
+# repair, settling as soon as the layout has held for a few seconds running.
+if [ "$launched" = 1 ]; then
+  stable=0
+  i=0
+  while [ "$i" -lt 40 ]; do
+    sleep 1
+    if layout_ok; then
+      stable=$((stable + 1))
+      [ "$stable" -ge 5 ] && break
+    else
+      stable=0
+      arrange
+    fi
+    i=$((i + 1))
+  done
+fi
 
 # Drop the transient name so it's an ordinary dynamic workspace again (it still
 # holds the three windows, so it won't be reclaimed; the next run picks a new one).
-focus_col "$EVO_ID"
+focus_win "$EVO_ID"
 niri msg action unset-workspace-name
