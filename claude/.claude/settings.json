@@ -2,6 +2,7 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Bash(python -m pytest *)",
@@ -25,7 +26,6 @@
     "command": "bash ~/.claude/statusline.sh"
   },
   "tui": "fullscreen",
-  "includeCoAuthoredBy": false,
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
   "teammateMode": "tmux",
