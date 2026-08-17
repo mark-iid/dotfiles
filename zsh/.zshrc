@@ -91,6 +91,28 @@ command -v eza >/dev/null && {
 command -v bat   >/dev/null && alias cat='bat --paging=never'
 command -v ugrep >/dev/null && alias grep='ugrep'
 
+# --- remote Claude Code session on the mac mini --------------------------------
+# Attach a local pane to a long-lived `claude` running on iidmacmini. `tmux new -A`
+# attaches if the session exists and creates it otherwise, so this one command is
+# both "start" and "reconnect" — which matters because this laptop suspends for
+# long stretches and every suspend drops the ssh connection.
+#
+# tmux rather than zellij ON THE FAR END, deliberately: the near end is already a
+# zellij pane, and nested zellij means both layers fight over Ctrl+p/t/n/o and
+# keystrokes get eaten by whichever sees them first. tmux's Ctrl+b prefix collides
+# with none of zellij's mode keys.
+#
+# `zsh -lc` is load-bearing, NOT decoration. `ssh host 'cmd'` runs a
+# non-interactive, non-login shell, which reads only .zshenv — never .zshrc or
+# .zprofile — so the `brew shellenv` line never runs and PATH is Apple's bare
+# path_helper default (/usr/bin:/bin:/usr/sbin:/sbin) with no /opt/homebrew in it.
+# Without the login shell this fails with "command not found: tmux" even though
+# tmux is installed. -t is needed too: tmux refuses to start without a TTY.
+#
+# `claude` itself resolves fine inside the session without any extra help, because
+# tmux spawns login shells for its panes.
+alias claude-mini="ssh -t iidmacmini 'zsh -lc \"tmux new -A -s claude\"'"
+
 # --- SDKMAN (Java for SailPoint IIQ — DESIGN §2), installed in $HOME ------------
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
