@@ -5,7 +5,7 @@
     "spacing": 6,
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["mpris", "clock"],
-    "modules-right": ["custom/dwt", "idle_inhibitor", "privacy", "custom/updates", "tray", "bluetooth", "pulseaudio", "cpu", "memory", "temperature", "power-profiles-daemon", "battery"],
+    "modules-right": ["custom/dwt", "idle_inhibitor", "privacy", "custom/updates", "tray", "bluetooth", "pulseaudio", "cpu", "memory", "temperature", "power-profiles-daemon", "battery", "custom/power"],
 
     "niri/workspaces": {
         "format": "{index}"
@@ -115,5 +115,18 @@
         "format": "{icon} {capacity}%",
         "format-charging": "󰂄 {capacity}%",
         "format-icons": ["󰁺", "󰁽", "󰂀", "󰂂", "󰁹"]
+    },
+    "custom/power": {
+        "format": "⏻",
+        "tooltip": false,
+        "menu": "on-click",
+        "menu-file": "$HOME/.config/waybar/power_menu.xml",
+        "menu-actions": {
+            "lock":     "$HOME/.config/waybar/scripts/power-action lock",
+            "suspend":  "$HOME/.config/waybar/scripts/power-action suspend",
+            "logout":   "$HOME/.config/waybar/scripts/power-action logout",
+            "reboot":   "$HOME/.config/waybar/scripts/power-action reboot",
+            "poweroff": "$HOME/.config/waybar/scripts/power-action poweroff"
+        }
     }
 }

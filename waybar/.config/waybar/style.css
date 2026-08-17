@@ -34,3 +34,40 @@ window#waybar {
 
 #battery.warning  { color: #e0af68; }
 #battery.critical { color: #f7768e; }
+
+/* Power dropdown. Red only on hover: the glyph sits at the far right where the
+   eye lands often, and a permanently red icon reads as a warning state. */
+#custom-power {
+    padding: 0 12px 0 10px;
+    color: #a9b1d6;
+}
+
+#custom-power:hover {
+    color: #f7768e;
+}
+
+/* The dropdown itself is a real GtkMenu, so it is NOT covered by the #id rules
+   above — it needs plain GTK widget selectors. Without these it renders in the
+   ambient GTK theme (light), which looks broken hanging off a dark bar. */
+menu {
+    background: rgb(26, 27, 38);
+    color: #c0caf5;
+    border: 1px solid #2f3549;
+    padding: 4px 0;
+}
+
+menu menuitem {
+    padding: 6px 20px;
+}
+
+menu menuitem:hover {
+    background: #2f3549;
+    color: #7aa2f7;
+}
+
+/* Visually separate the two entries that end the session from the harmless ones. */
+menu separator {
+    background: #2f3549;
+    margin: 4px 0;
+    min-height: 1px;
+}

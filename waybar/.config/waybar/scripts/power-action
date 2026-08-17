@@ -1,0 +1,51 @@
+#!/bin/sh
+# waybar custom/power: carry out one entry from the power dropdown (power_menu.xml).
+# Usage: power-action lock|suspend|logout|reboot|poweroff
+#
+# Reboot and shutdown are gated behind a confirmation, the rest fire immediately.
+# The bar sits at the top edge where a misaimed click lands easily, and "Shut down"
+# is two pixels from "Reboot" — without a prompt a slip ends the session and takes
+# unsaved work with it.
+#
+# The prompt is fuzzel --dmenu rather than a GTK dialog on purpose: fuzzel is
+# already the launcher (niri config), so it is guaranteed present, already themed,
+# and grabs the keyboard — which matters, because a confirm you can click past by
+# accident is not a confirm.
+set -u
+
+# Cancel is listed FIRST so it is the pre-selected entry: Enter on a mistrigger
+# aborts rather than confirms. --lines 2 sizes the list to exactly the two options.
+confirm() {
+    _label="$1"
+    _answer="$(printf 'Cancel\n%s\n' "$_label" \
+        | fuzzel --dmenu --prompt "$_label? " --lines 2 2>/dev/null)"
+    [ "$_answer" = "$_label" ]
+}
+
+case "${1:-}" in
+    lock)
+        # Same invocation as the Mod+Escape binding in the niri config; keep them
+        # together so the lock screen looks identical however it was triggered.
+        exec gtklock -d -c "$HOME/.config/gtklock/config.ini"
+        ;;
+    suspend)
+        # No confirm: suspend is trivially reversible, and swayidle locks before
+        # suspending anyway (see the idle-lock note in the niri config).
+        exec systemctl suspend
+        ;;
+    logout)
+        # -s skips niri's own "Press Enter to confirm" prompt. Drop the -s to get
+        # that prompt back if an immediate logout ever proves too twitchy.
+        exec niri msg action quit -s
+        ;;
+    reboot)
+        confirm "Reboot" && exec systemctl reboot
+        ;;
+    poweroff)
+        confirm "Shut down" && exec systemctl poweroff
+        ;;
+    *)
+        echo "usage: ${0##*/} lock|suspend|logout|reboot|poweroff" >&2
+        exit 2
+        ;;
+esac

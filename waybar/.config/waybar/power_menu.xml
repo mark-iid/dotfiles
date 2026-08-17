@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Dropdown for waybar's custom/power module. Waybar loads this with GtkBuilder and
+  requires a GtkMenu whose id is exactly "menu"; each GtkMenuItem id is looked up
+  as a key in the module's "menu-actions" map in ../config, and that key's value is
+  run as a shell command. So the ids here and the keys there MUST stay in sync —
+  renaming one silently makes the entry do nothing (no error, no log line).
+
+  GTK3, not GTK4: GtkMenu was removed in GTK4, and this only works because waybar
+  0.15 still links libgtk-3. If waybar ever moves to GTK4 this file has to be
+  rewritten as a GMenu model.
+
+  "visible" must be True on every item; GtkBuilder defaults it to False and an
+  item without it just won't be drawn.
+-->
+<interface>
+  <object class="GtkMenu" id="menu">
+    <child>
+      <object class="GtkMenuItem" id="lock">
+        <property name="label">Lock</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="suspend">
+        <property name="label">Suspend</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="logout">
+        <property name="label">Log out</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="sep">
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="reboot">
+        <property name="label">Reboot</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="poweroff">
+        <property name="label">Shut down</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+  </object>
+</interface>
