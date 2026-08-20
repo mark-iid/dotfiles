@@ -184,21 +184,22 @@ binds {
     Mod+Shift+G { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/dwt-toggle"; }
 
     // --- Application launchers -------------------------------------------------
-    // Mnemonic single-Mod keys. Mod+D is the fuzzel launcher (type any app), so
-    // Discord takes Mod+Shift+D. Flatpaks launch via `flatpak run`; layered apps
-    // (evolution, code) by name. Discord went back to a flatpak on 2026-08-08 —
-    // it was a native ~/.local/bin launcher only because a stale flatpak override
-    // was crashing it — so it is a plain `flatpak run` like the rest now.
+    // Mnemonic single-Mod keys. Flatpaks launch via `flatpak run`; layered apps
+    // (thunar, code) by name.
+    //
+    // Evolution, Slack and Discord deliberately have NO individual binds. Mod+G
+    // below gathers all three onto one workspace, which is how they are actually
+    // used, and Mod+D (fuzzel) still launches any of them on its own — so a
+    // per-app key was a third way to do something already covered twice. Dropping
+    // them is what freed Mod+E, below.
     Mod+B       { spawn "flatpak" "run" "org.mozilla.firefox"; }             // Browser (Firefox)
     Mod+C       { spawn "code"; }                                            // Code (VS Code)
-    Mod+E       { spawn "evolution"; }                                       // Email (Evolution)
-    Mod+S       { spawn "flatpak" "run" "com.slack.Slack"; }                 // Slack
+    Mod+E       { spawn "thunar"; }                                          // Explorer (Thunar) — note Mod+Shift+E quits niri
     Mod+P       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-pick"; } // Passwords — rbw picker → clipboard (Bitwarden app can't copy on niri)
     Mod+O       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-otp"; }  // OTP — rbw TOTP code → clipboard
     Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
     Mod+N       { spawn "flatpak" "run" "net.cozic.joplin_desktop"; }        // Notes (Joplin)
-    Mod+Shift+D { spawn "flatpak" "run" "com.discordapp.Discord"; }          // Discord
-    Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord
+    Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord (the only bind for these three)
     Mod+T       { spawn "sh" "-c" "exec toolbox run -c voice $HOME/.local/bin/voice-dictate"; } // Talk — toggle voice dictation (whisper.cpp in `voice` toolbox → wtype into focused window)
     Mod+Shift+T { spawn "sh" "-c" "exec $HOME/.local/bin/voice-control"; } // Talk+control — toggle niri voice command mode (Vosk grammar → niri msg action)
 

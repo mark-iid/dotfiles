@@ -8,15 +8,16 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 |---|---|
 | `Mod+B` | Browser (Firefox) |
 | `Mod+C` | VS Code |
-| `Mod+E` | Email (Evolution) |
-| `Mod+S` | Slack |
+| `Mod+E` | Files (Thunar) |
 | `Mod+P` | Passwords (rbw picker → clipboard) |
 | `Mod+O` | TOTP codes (rbw picker → clipboard) |
 | `Mod+N` | Notes (Joplin) |
 | `Mod+M` | Music (Supersonic) |
-| `Mod+Shift+D` | Discord |
 | `Mod+G` | Comms screen (fresh workspace: Evolution ∣ Slack / Discord) |
 | `Mod+D` | App launcher (fuzzel — type any app) |
+
+Evolution, Slack and Discord have no keys of their own — `Mod+G` lays all three
+out together, and `Mod+D` launches any one on its own.
 
 ## 🖥 System & tools
 | Key | Action |
@@ -26,7 +27,8 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+Escape` | Lock screen |
 | `Mod+Shift+C` | Caffeine (stay awake — stop idle-lock + block suspend) |
 | `Mod+Shift+G` | Game mode (toggle touchpad disable-while-typing) |
-| `Mod+Shift+/` | Show hotkey overlay |
+| `Mod+/` | This cheatsheet |
+| `Mod+Shift+/` | Show hotkey overlay (niri's own raw bind list) |
 
 ## 🎤 Voice
 | Key | Action |
@@ -45,6 +47,7 @@ Command-mode phrases: **focus** / **move** *left · right · up · down* ∣ **c
 | `Mod+F` | Maximize column |
 | `Mod+Shift+F` | Fullscreen |
 | `Mod+R` | Cycle column width (⅓ → ½ → ⅔) |
+| `Mod+Shift+X` | Un-stick an X11 app that fullscreened itself (SDL / Ren'Py games) |
 
 ## 🗂 Workspaces
 | Key | Action |
