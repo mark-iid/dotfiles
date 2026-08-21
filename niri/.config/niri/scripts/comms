@@ -1,19 +1,25 @@
 #!/bin/sh
 # comms — lay out the messaging apps as a single "virtual screen":
 #
-#   +----------------------+-----------+
-#   |                      |  Slack    |
-#   |      Evolution       +-----------+
-#   |                      |  Discord  |
-#   +----------------------+-----------+
+#   +----------------+-----------------------+
+#   |                |         Slack         |
+#   |   Evolution    +-----------------------+
+#   |                |        Discord        |
+#   +----------------+-----------------------+
 #
 # Bound to Mod+G. Moves to a fresh empty workspace, gathers the three apps there
 # (reusing already-open windows, launching any that are missing), and tiles them:
-# Evolution fills the left column, Slack over Discord share the right, half each
-# — unless a client refuses to shrink that far, in which case the left column
-# gives up the difference so the pair still fits on screen (arrange() step 6).
+# Evolution fills the left column, Slack over Discord share the right. The chat
+# column takes the larger share ($CHAT_PCT) and Evolution claims exactly what is
+# left, so the three together fill the output edge to edge.
 # Re-running just re-gathers onto a new empty workspace — the apps are all
 # single-instance, so nothing is duplicated.
+
+# Share of the width given to the Slack/Discord column, as a percentage. The
+# remainder goes to Evolution, which is deliberately the narrower of the two: it
+# is a message list, while the chat clients hold conversation text side by side
+# with their channel rails. Both clients shrink below this without complaint.
+CHAT_PCT=56
 
 EVO_ID=org.gnome.Evolution
 SLACK_ID=com.slack.Slack
@@ -68,21 +74,6 @@ focus_win() { _i=$(win_id "$1"); [ -n "$_i" ] && niri msg action focus-window --
 col_count() {
   printf '%s\n' "$1" | jq -r --argjson w "$2" --argjson c "$3" \
     '[.[] | select(.workspace_id == $w and .layout.pos_in_scrolling_layout[0] == $c)] | length'
-}
-
-# How many columns the target workspace has.
-ncols() {
-  printf '%s\n' "$1" | jq -r --argjson w "$2" \
-    '[.[] | select(.workspace_id == $w) | .layout.pos_in_scrolling_layout[0]] | unique | length'
-}
-
-# Width of a column on the target workspace, in whole points. The widest tile in
-# it: a window that refuses to shrink to its column's width reports the larger
-# size, and that overhang is exactly what we are trying to measure.
-col_w() {
-  printf '%s\n' "$1" | jq -r --argjson w "$2" --argjson c "$3" \
-    '[.[] | select(.workspace_id == $w and .layout.pos_in_scrolling_layout[0] == $c)
-          | .layout.tile_size[0]] | max | floor'
 }
 
 # Logical width of the output the target workspace is on, in points.
@@ -172,40 +163,28 @@ arrange() {
     niri msg action consume-or-expel-window-left
   fi
 
-  # 5. Size the columns 50/50. Focus the right column explicitly rather than
-  #    inheriting whatever step 4 left focused — get that wrong and the right
-  #    column silently keeps the width Discord asked for when it mapped (~940pt
-  #    here), and the pair hangs off the right edge of the screen.
+  # 5. Even out the right column. Reset both heights to automatic so Slack and
+  #    Discord split it in half; left alone they keep whatever height they were
+  #    last mapped or dragged at, which is how the column ends up lopsided.
+  focus_win "$SLACK_ID"   && niri msg action reset-window-height
+  focus_win "$DISCORD_ID" && niri msg action reset-window-height
+
+  # 6. Size the columns. The chat column is set first because it is the one with
+  #    a fixed target; Evolution then takes exactly what is left. Shrinking
+  #    Evolution to a width that is certainly too small before expanding is what
+  #    makes the expand exact — the action fills the free space to the right of
+  #    the focused column, so there has to be free space there to find. This
+  #    needs no arithmetic over gap and view widths (the old version hard-coded
+  #    the result of that sum, which went stale the moment gaps changed), and a
+  #    client that refuses to shrink to its target just leaves Evolution less to
+  #    claim rather than pushing the pair off the right edge.
   focus_win "$DISCORD_ID" || focus_win "$SLACK_ID" || return 0
-  niri msg action set-column-width "50%"
-  # tile_size reports what the client last *committed*, which is the whole point
-  # here — a refusal to shrink only shows up once it has redrawn. Give it a beat.
+  niri msg action set-column-width "$CHAT_PCT%"
   sleep 0.4
-  s=$(snap)
-  [ "$(ncols "$s" "$wsid")" -gt 1 ] || return 0
-  read_info "$s" "$DISCORD_ID"; [ -z "$IID" ] && read_info "$s" "$SLACK_ID"
-  right=$(col_w "$s" "$wsid" "$ICOL")
-
-  niri msg action focus-column-left
-  niri msg action set-column-width "50%"
+  focus_win "$EVO_ID" || return 0
+  niri msg action set-column-width "25%"
   sleep 0.4
-  s=$(snap)
-  read_info "$s" "$EVO_ID"
-  [ -z "$IID" ] && return 0
-  half=$(col_w "$s" "$wsid" "$ICOL")
-
-  # 6. A client may refuse to shrink to half the screen, in which case the two
-  #    50% columns no longer fit side by side. Hand the excess to the left
-  #    column: a 50% column is (view - gap)/2 - gap wide, so 2 * half is exactly
-  #    the room the two columns have to share, whatever the view width and gaps
-  #    happen to be. Only ever narrows, and never past the point of usefulness.
-  if [ -z "$half" ] || [ -z "$right" ] || [ "$half" = null ] || [ "$right" = null ]; then
-    return 0
-  fi
-  fit=$((2 * half - right))
-  if [ "$fit" -lt "$half" ] && [ "$fit" -gt 300 ]; then
-    niri msg action set-column-width "$fit"
-  fi
+  niri msg action expand-column-to-available-width
 }
 
 # True when the three windows sit exactly as the diagram at the top describes.
