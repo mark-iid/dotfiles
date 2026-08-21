@@ -1,25 +1,25 @@
 #!/bin/sh
 # comms — lay out the messaging apps as a single "virtual screen":
 #
-#   +----------------+-----------------------+
-#   |                |         Slack         |
-#   |   Evolution    +-----------------------+
-#   |                |        Discord        |
-#   +----------------+-----------------------+
+#   +--------------------+--------------------+
+#   |                    |       Slack        |
+#   |     Evolution      +--------------------+
+#   |                    |      Discord       |
+#   +--------------------+--------------------+
 #
 # Bound to Mod+G. Moves to a fresh empty workspace, gathers the three apps there
 # (reusing already-open windows, launching any that are missing), and tiles them:
 # Evolution fills the left column, Slack over Discord share the right. The chat
-# column takes the larger share ($CHAT_PCT) and Evolution claims exactly what is
-# left, so the three together fill the output edge to edge.
+# column is set to $CHAT_PCT and Evolution claims exactly what is left, so the
+# three together fill the output edge to edge.
 # Re-running just re-gathers onto a new empty workspace — the apps are all
 # single-instance, so nothing is duplicated.
 
-# Share of the width given to the Slack/Discord column, as a percentage. The
-# remainder goes to Evolution, which is deliberately the narrower of the two: it
-# is a message list, while the chat clients hold conversation text side by side
-# with their channel rails. Both clients shrink below this without complaint.
-CHAT_PCT=56
+# Share of the width given to the Slack/Discord column, as a percentage; the
+# remainder goes to Evolution. 50 splits the screen down the middle. Both chat
+# clients shrink to half without complaint, so this is a free choice — raise it
+# to hand the conversation panes more room at Evolution's expense.
+CHAT_PCT=50
 
 EVO_ID=org.gnome.Evolution
 SLACK_ID=com.slack.Slack
