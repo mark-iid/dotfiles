@@ -154,3 +154,47 @@ alias claude-mini-mosh="mosh --server=/opt/homebrew/bin/mosh-server iidmacmini -
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
 
+# --- undo terminal modes left behind by a dead remote session ------------------
+# When an ssh connection drops mid-TUI (nvim, tmux, htop on the far end), the
+# remote program never gets to run its exit sequences, so the LOCAL terminal keeps
+# whatever modes that program switched on. The usual casualty is mouse reporting:
+# ?1003h/?1006h are still set, nothing remains to consume the reports, so every
+# mouse movement is typed into the shell as literal "35;86;37M" garbage. A hidden
+# cursor and a stuck alternate screen leak the same way.
+#
+# Nothing can prevent this — the sequences that would undo it die with the
+# connection — so undo them locally at every prompt instead. Each one is a no-op
+# when the mode is already off, so this costs nothing in the normal case.
+#
+# ?2004 (bracketed paste) is deliberately NOT reset here: zle owns that one and
+# re-enables it per line, so touching it can only break paste.
+# NOTHING IN HERE MAY MOVE THE CURSOR. Every sequence below is a pure mode
+# toggle, and that is the whole design constraint — see fixterm for why.
+_reset_terminal_modes() {
+  # mouse: normal, button-event, any-event, focus, SGR ext, urxvt ext
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1004l\e[?1006l\e[?1015l'
+  # cursor visible, autowrap on, attributes cleared
+  printf '\e[?25h\e[?7h\e[0m'
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _reset_terminal_modes
+
+# The same cleanup on demand, plus the two things that must NOT happen at every
+# prompt: a tty-mode reset, and leaving the alternate screen.
+#
+# \e[?1049l WAS in the precmd hook above and it silently ate command output.
+# 1049 is not just a screen switch: on `l` it also RESTORES THE SAVED CURSOR
+# POSITION. Sent without a matching `h` it restores a stale save, so the cursor
+# jumps back up the screen — and zsh redraws its prompt with \e[J, "erase from
+# cursor to end of display", which then wipes everything below that point.
+# Net effect at every prompt: the command's output flashes up and is deleted.
+# Confirmed by capturing the raw pty stream, where the two sequences land
+# back to back.
+#
+# It is safe here because you run this deliberately, when the screen is already
+# wrong and there is nothing worth preserving below the cursor.
+fixterm() {
+  stty sane
+  _reset_terminal_modes
+  printf '\e[?1049l'
+}
