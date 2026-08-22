@@ -16,9 +16,13 @@
 # single-instance, so nothing is duplicated.
 
 # Share of the width given to the Slack/Discord column, as a percentage; the
-# remainder goes to Evolution. 50 splits the screen down the middle. Both chat
-# clients shrink to half without complaint, so this is a free choice — raise it
-# to hand the conversation panes more room at Evolution's expense.
+# remainder goes to Evolution. 50 splits the screen down the middle. Raise it to
+# hand the conversation panes more room at Evolution's expense.
+#
+# There is a floor: Discord refuses to go below 800 logical px (~48% of this
+# output's 1671), so setting this much under 48 just gets clamped and Evolution
+# silently loses the difference. Slack has no floor worth the name — it shrinks
+# to 331 without complaint.
 CHAT_PCT=50
 
 EVO_ID=org.gnome.Evolution
@@ -157,6 +161,19 @@ arrange() {
   focus_win "$SLACK_ID"   && niri msg action move-column-to-last
   focus_win "$DISCORD_ID" && niri msg action move-column-to-last
 
+  # 3b. Pre-size the two chat columns while each is still alone. On a cold start
+  #     Discord declares a minimum width of 940, and niri will not renegotiate
+  #     that once Discord is stacked inside Slack's column — set-column-width
+  #     there is a silent no-op, the column stays pinned at 940 (56% of this
+  #     output), and Evolution is left with whatever remains. That is exactly how
+  #     the 50/50 split kept coming out 43/56. Sized while it has a column to
+  #     itself, Discord accepts the smaller width and holds it through the
+  #     consume below.
+  for app in "$SLACK_ID" "$DISCORD_ID"; do
+    focus_win "$app" && niri msg action set-column-width "$CHAT_PCT%"
+  done
+  sleep 0.4
+
   # 4. Stack Discord under Slack: Discord's left neighbour is now Slack, and a
   #    consumed window lands at the bottom of the target column -> Slack on top.
   if [ -n "$(win_id "$SLACK_ID")" ] && focus_win "$DISCORD_ID"; then
@@ -194,7 +211,7 @@ layout_ok() {
   vw=$(view_w)
   [ -z "$vw" ] && return 1
   snap | jq -e --arg e "$EVO_ID" --arg s "$SLACK_ID" --arg d "$DISCORD_ID" \
-              --argjson w "$wsid" --argjson vw "$vw" '
+              --argjson w "$wsid" --argjson vw "$vw" --argjson pct "$CHAT_PCT" '
     def pick($a): [.[] | select(.app_id == $a and .layout.pos_in_scrolling_layout != null)]
                   | sort_by(.id) | first;
     pick($e) as $E | pick($s) as $S | pick($d) as $D |
@@ -206,6 +223,12 @@ layout_ok() {
     # Both columns on screen at once. Gaps make the true bound tighter still, so
     # this only ever fires on a real overflow.
     and ($E.layout.tile_size[0] + ([$S, $D] | map(.layout.tile_size[0]) | max)) < $vw
+    # ...and the chat column is actually the width it was asked for. Checking only
+    # that the columns fit is what let the bug stand: a column clamped wide by a
+    # client minimum still fits, so the repair loop below settled on the lopsided
+    # layout after five seconds instead of arranging again.
+    and ((([$S, $D] | map(.layout.tile_size[0]) | max) - ($vw * $pct / 100)) as $d
+         | $d < ($vw * 0.02) and $d > -($vw * 0.02))
   ' >/dev/null 2>&1
 }
 
