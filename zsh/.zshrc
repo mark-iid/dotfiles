@@ -113,6 +113,44 @@ command -v ugrep >/dev/null && alias grep='ugrep'
 # tmux spawns login shells for its panes.
 alias claude-mini="ssh -t iidmacmini 'zsh -lc \"tmux new -A -s claude\"'"
 
+# --- the same session over mosh, for when the laptop has been asleep -----------
+# Same destination, same tmux session, different transport. Reach for this one by
+# default; keep the ssh alias above for the times you need agent forwarding, port
+# forwarding or scp, none of which mosh does.
+#
+# WHY: ssh over a suspend is the failure documented by the terminal-mode hook at
+# the bottom of this file. The laptop sleeps, the TCP connection dies unnoticed,
+# and the ssh client hangs on a socket that will not time out — still holding the
+# LOCAL tty in raw mode, so the keyboard is dead until `~.` or `stty sane`. mosh
+# has no long-lived TCP connection to hang: it is UDP with a session key, so it
+# reattaches after a suspend, a wifi change or a move to a different network,
+# without a reconnect and without leaving the terminal wedged.
+#
+# --server= is load-bearing, and for EXACTLY the reason `zsh -lc` is above: mosh
+# starts the far end by running `mosh-server` over a non-interactive, non-login
+# ssh, which never reads .zprofile, so /opt/homebrew is not in PATH. Without the
+# absolute path this fails with "Did not find mosh server startup message",
+# which reads like a network problem and is not one.
+#
+# `-- zsh -lc ...` needs mosh >= 1.4.0 for remote commands (brew ships 1.4.0).
+# Note the quoting is one level shallower than the ssh alias: mosh execs this
+# argv directly rather than handing a string to a remote shell, so nothing gets
+# re-parsed on the far end and the inner quotes do not need escaping. `-t` is
+# gone too — mosh always allocates a pty.
+#
+# tmux is still wanted underneath, for two reasons that mosh does not cover: mosh
+# survives the network but not a reboot or a killed client, and it owns the screen
+# it paints, so it has no scrollback of its own — tmux's copy mode is what gives
+# scrollback back.
+#
+# Two things to fix on iidmacmini the first time this is used, both of which look
+# like hangs rather than errors:
+#   * inbound UDP 60000-61000 must be open; the macOS application firewall drops
+#     it silently, so ssh succeeds and then mosh sits there
+#   * both ends need a UTF-8 locale or mosh refuses to start outright
+alias claude-mini-mosh="mosh --server=/opt/homebrew/bin/mosh-server iidmacmini -- zsh -lc 'tmux new -A -s claude'"
+
 # --- SDKMAN (Java for SailPoint IIQ — DESIGN §2), installed in $HOME ------------
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
+
