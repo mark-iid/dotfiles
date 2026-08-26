@@ -1,0 +1,32 @@
+[Unit]
+Description=hamlib rigctld — Yaesu FT-710 CAT, shared by every ham app
+Documentation=man:rigctld(1)
+# ONE daemon owns the serial port; QLog, WSJT-X, Pat and fldigi all connect to it
+# over TCP as "Hamlib NET rigctl" (model 2) on localhost:4532. Without this they
+# fight over /dev/ttyUSB0 and whichever starts second simply fails to open it.
+#
+# BOUND TO THE RADIO. The FT-710's CAT interface is a CP2105 powered by the rig,
+# so the device unit below exists only while the radio is switched on. BindsTo
+# stops this service when the rig is powered off, and WantedBy starts it when the
+# rig comes up — no polling, no timer, no restart loop against absent hardware.
+BindsTo=dev-serial-by\x2did-usb\x2dSilicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_01B687FB\x2dif00\x2dport0.device
+After=dev-serial-by\x2did-usb\x2dSilicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_01B687FB\x2dif00\x2dport0.device
+
+[Service]
+Type=simple
+# -----------------------------------------------------------------------------
+# dtr_state=OFF,rts_state=OFF IS A SAFETY SETTING, NOT A TUNING ONE. On this rig
+# DTR/RTS is wired to PTT, so merely OPENING the port with the lines asserted puts
+# the FT-710 into transmit — verified the hard way on 2026-08-26 (SETUP §6.5).
+# rigctld holds the port open for as long as it runs. Do not remove these.
+# -----------------------------------------------------------------------------
+ExecStart=/usr/bin/rigctld -m 1049 -r /dev/serial/by-id/usb-Silicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_01B687FB-if00-port0 -s 38400 \
+    --set-conf=dtr_state=OFF,rts_state=OFF \
+    -T 127.0.0.1 -t 4532
+# Loopback only: -T 127.0.0.1 keeps the rig off the network. rigctld has no auth
+# of any kind, so anyone who can reach the port can key the transmitter.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=dev-serial-by\x2did-usb\x2dSilicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_01B687FB\x2dif00\x2dport0.device

@@ -1,0 +1,28 @@
+[Unit]
+Description=rclone mount — Nextcloud (WebDAV)
+Documentation=man:rclone(1)
+# The app password lives in ~/.config/rclone/rclone.conf (NOT in this repo). This
+# unit only mounts the `nextcloud` remote; create it with `rclone config`.
+#
+# MOUNT, NOT SYNC — deliberate. The tree is ~88 GB against a 238 GB disk that also
+# holds two rpm-ostree deployments (SETUP §6.6b). Do not swap this for the
+# Nextcloud desktop sync client.
+After=default.target
+
+[Service]
+Type=notify
+ExecStartPre=-/usr/bin/mkdir -p %h/Nextcloud
+ExecStart=/usr/bin/rclone mount nextcloud: %h/Nextcloud \
+    --vfs-cache-mode writes \
+    --vfs-cache-max-age 24h \
+    --vfs-cache-max-size 4G \
+    --dir-cache-time 12h \
+    --poll-interval 15s \
+    --umask 077 \
+    --no-console
+ExecStop=/usr/bin/fusermount3 -u %h/Nextcloud
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
