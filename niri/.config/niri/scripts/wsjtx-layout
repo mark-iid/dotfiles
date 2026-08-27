@@ -1,0 +1,108 @@
+#!/bin/sh
+# wsjtx-layout — launch WSJT-X and stack its two windows in ONE full-width column:
+#
+#   +------------------------------------------+
+#   |            Wide Graph (waterfall)   ~20% |
+#   +------------------------------------------+
+#   |                                          |
+#   |            WSJT-X main window       ~80% |
+#   |                                          |
+#   +------------------------------------------+
+#
+# Bound to Mod+W. Re-running against an already-open WSJT-X just re-imposes the
+# layout, so it doubles as a repair command.
+#
+# WHY A SCRIPT AND NOT JUST WINDOW RULES: the rules in config.kdl make both windows
+# tile at full column width and give the waterfall a 20% default height, but niri
+# opens every new window in its OWN column. There is no window-rule that says "open
+# into the column that already exists" — stacking needs consume-or-expel, which is an
+# action, not a rule. Same reason scripts/comms exists.
+#
+# ORDERING IS DELIBERATE: a consumed window lands at the BOTTOM of the target column.
+# So the waterfall's column must be the one that survives, and the main window is
+# consumed into it — that is what puts the waterfall on top. Doing it the other way
+# round silently gives the inverse layout.
+
+WATERFALL_TITLE='Wide Graph'
+WF_PCT=20                     # waterfall share of the column height, percent
+
+id_by_title() {   # $1 = substring of the window title
+  niri msg --json windows | jq -r --arg t "$1" \
+    '[.[] | select(.app_id=="wsjtx" and (.title | contains($t)))] | sort_by(.id) | first | .id // empty'
+}
+id_main() {       # the wsjtx window that is NOT the waterfall
+  # Pick the TALLEST non-waterfall window, not the lowest id. On startup WSJT-X maps
+  # a short-lived splash also titled "WSJT-X" (the real main window carries a version,
+  # e.g. "WSJT-X   v3.0.1"). Selecting by id grabbed the splash, and the arrangement
+  # was then applied to a window that vanished a second later — which is exactly how
+  # this ended up with the two real windows still in separate columns.
+  niri msg --json windows | jq -r --arg t "$WATERFALL_TITLE" \
+    '[.[] | select(.app_id=="wsjtx" and ((.title | contains($t)) | not))]
+     | sort_by(.layout.tile_size[1]) | last | .id // empty'
+}
+
+# Launch only if it is not already running; WSJT-X is single-instance anyway and a
+# second copy would fight over the rig and the .ini.
+if ! pgrep -x wsjtx >/dev/null 2>&1; then
+  setsid wsjtx >/dev/null 2>&1 &
+fi
+
+# Wait for BOTH windows. The waterfall can lag the main window by a second or two on
+# a cold start, and arranging before it exists produces a one-window column that then
+# gets disturbed when it finally maps.
+i=0
+while [ "$i" -lt 60 ]; do
+  WF=$(id_by_title "$WATERFALL_TITLE")
+  MAIN=$(id_main)
+  [ -n "$WF" ] && [ -n "$MAIN" ] && break
+  sleep 0.5
+  i=$((i + 1))
+done
+[ -n "$WF" ] && [ -n "$MAIN" ] || { command -v notify-send >/dev/null && \
+  notify-send "wsjtx-layout" "WSJT-X windows did not both appear"; exit 1; }
+
+# Let the startup splash disappear before arranging, then re-read the ids — the main
+# window's id can change as the splash is replaced by the real window.
+sleep 1.5
+WF=$(id_by_title "$WATERFALL_TITLE")
+MAIN=$(id_main)
+
+# Gather onto the trailing EMPTY workspace first, exactly as scripts/comms does.
+# Without this the move-column-to-first/last below reorder relative to every other
+# window on the workspace (terminals, browser, chat), and the consume then merges the
+# wrong pair — which is how the two windows kept ending up in separate columns.
+out=$(niri msg --json workspaces | jq -r '.[] | select(.is_focused) | .output')
+target=$(niri msg --json workspaces | jq -r --arg o "$out" \
+  '[.[] | select(.output==$o and .active_window_id==null)] | sort_by(.idx) | last | .idx // empty')
+if [ -n "$target" ]; then
+  niri msg action focus-workspace "$target" >/dev/null 2>&1
+  niri msg action set-workspace-name wsjtx  >/dev/null 2>&1
+  for id in "$WF" "$MAIN"; do
+    niri msg action move-window-to-workspace --window-id "$id" --focus false wsjtx >/dev/null 2>&1
+  done
+fi
+
+# Put the waterfall to the LEFT of the main window, so the consume below moves main
+# into the waterfall's column (landing underneath it).
+niri msg action focus-window --id "$WF"   >/dev/null 2>&1
+niri msg action move-column-to-first      >/dev/null 2>&1
+niri msg action focus-window --id "$MAIN" >/dev/null 2>&1
+niri msg action move-column-to-last       >/dev/null 2>&1
+
+# Merge: main is consumed leftwards into the waterfall's column, at the bottom.
+niri msg action focus-window --id "$MAIN" >/dev/null 2>&1
+niri msg action consume-or-expel-window-left >/dev/null 2>&1
+sleep 0.3
+
+# Full width, then the vertical split. Height is set on the waterfall; the main
+# window takes what is left, so only one of the two needs setting.
+niri msg action set-column-width "100%"   >/dev/null 2>&1
+niri msg action focus-window --id "$WF"   >/dev/null 2>&1
+niri msg action set-window-height "${WF_PCT}%" >/dev/null 2>&1
+
+# Leave focus on the main window — that is where you actually type.
+niri msg action focus-window --id "$MAIN" >/dev/null 2>&1
+
+# Drop the transient name so it is an ordinary dynamic workspace again; it still
+# holds the two windows, so niri will not reclaim it.
+niri msg action unset-workspace-name >/dev/null 2>&1

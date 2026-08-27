@@ -200,11 +200,19 @@ hotkey-overlay {
 // matches nothing is SILENT. Verify with `kb3lyb-check-window-rules` on the
 // shack machine, which reports any rule that matched no open window.
 
+// WSJT-X tiles, full width, with the waterfall stacked on top at ~20% height.
+// Both windows share the app-id "wsjtx", so they are told apart by TITLE — the
+// waterfall is "WSJT-X - Wide Graph". These rules set the sizes; scripts/wsjtx-layout
+// (Mod+W) does the stacking, because niri has no rule for "open into the existing
+// column" — that needs consume-or-expel, which is an action.
 window-rule {
     match app-id=r#"^(?i)wsjt-?x$"#
-    open-floating true
-    default-column-width { fixed 1100; }
-    default-window-height { fixed 900; }
+    open-floating false
+    default-column-width { proportion 1.0; }
+}
+window-rule {
+    match app-id=r#"^(?i)wsjt-?x$"# title=r#"Wide Graph"#
+    default-window-height { proportion 0.2; }
 }
 
 window-rule {
@@ -214,11 +222,10 @@ window-rule {
     default-window-height { fixed 900; }
 }
 
+// fldigi tiles too (2026-08-27) — it is a normal resizable window.
 window-rule {
     match app-id=r#"^(?i)fldigi$"#
-    open-floating true
-    default-column-width { fixed 1200; }
-    default-window-height { fixed 800; }
+    open-floating false
 }
 
 window-rule {
@@ -357,7 +364,7 @@ binds {
     // The obvious first letters were already taken by window management (Q close,
     // F maximize, D launcher, L focus-right, P passwords), so these use free keys
     // with the mnemonic spelled out rather than a letter that merely looks right:
-    Mod+W       { spawn "wsjtx"; }                                           // WSJT-X — weak-signal digital (FT8/FT4)
+    Mod+W       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/wsjtx-layout"; } // WSJT-X — waterfall stacked on top, full width
     Mod+S       { spawn "qlog"; }                                            // Station log (QLog)
     Mod+A       { spawn "fldigi"; }                                          // All-mode digital (fldigi)
     Mod+I       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/winlink"; } // Inbox — Winlink: VARA + pat http + browser
