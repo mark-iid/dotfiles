@@ -29,4 +29,10 @@ Restart=on-failure
 RestartSec=5
 
 [Install]
+# TWO triggers, and both are needed. WantedBy the device unit starts rigctld when the
+# rig is switched ON mid-session. But at login the device is ALREADY present, so that
+# trigger never fires — which is exactly how this service ended up dead after a
+# reboot on 2026-08-27 despite being enabled and the rig being on. default.target
+# covers the at-login case; BindsTo above still stops it when the rig goes away.
 WantedBy=dev-serial-by\x2did-usb\x2dSilicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_01B687FB\x2dif00\x2dport0.device
+WantedBy=default.target
