@@ -330,12 +330,7 @@ binds {
     Mod+O       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-otp"; }  // OTP — rbw TOTP code → clipboard
     Mod+M       { spawn "sh" "-c" "[ $(hostname -s) = kb3lyb ] && exit 0; exec flatpak run io.github.dweymouth.supersonic"; }  // Music (Supersonic) — laptop only
     Mod+N       { spawn "flatpak" "run" "net.cozic.joplin_desktop"; }        // Notes (Joplin)
-    // Group comms — fresh workspace: Evolution | Slack/Discord. LAPTOP ONLY: this is
-    // the only thing that launches Slack, and Slack is not wanted on the shack PC.
-    // Guarding the whole bind takes Evolution and Discord with it, which is the
-    // intended trade — the comms SCREEN is a work-comms layout, not a shack one, and
-    // all three are still reachable individually through Mod+D (fuzzel).
-    Mod+G       { spawn "sh" "-c" "[ $(hostname -s) = kb3lyb ] && exit 0; exec $HOME/.config/niri/scripts/comms"; } // Group comms — laptop only
+    Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord (the only bind for these three)
     Mod+T       { spawn "sh" "-c" "exec toolbox run -c voice $HOME/.local/bin/voice-dictate"; } // Talk — toggle voice dictation (whisper.cpp in `voice` toolbox → wtype into focused window)
 
     // --- HAM RADIO (kb3lyb shack PC) ------------------------------------------

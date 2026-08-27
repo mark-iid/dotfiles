@@ -13,7 +13,7 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+O` | TOTP codes (rbw picker → clipboard) |
 | `Mod+N` | Notes (Joplin) |
 | `Mod+M` | Music (Supersonic) *(laptop only)* |
-| `Mod+G` | Comms screen: Evolution ∣ Slack / Discord *(laptop only)* |
+| `Mod+G` | Comms screen (fresh workspace: Evolution ∣ Slack / Discord) |
 | `Mod+D` | App launcher (fuzzel — type any app) |
 
 ## 📻 Ham radio (shack PC only)
