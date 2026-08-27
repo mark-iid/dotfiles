@@ -7,13 +7,13 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | Key | App |
 |---|---|
 | `Mod+B` | Browser (Firefox) |
-| `Mod+C` | VS Code |
+| `Mod+C` | VS Code *(laptop only)* |
 | `Mod+E` | Files (Thunar) |
 | `Mod+P` | Passwords (rbw picker → clipboard) |
 | `Mod+O` | TOTP codes (rbw picker → clipboard) |
 | `Mod+N` | Notes (Joplin) |
-| `Mod+M` | Music (Supersonic) |
-| `Mod+G` | Comms screen (fresh workspace: Evolution ∣ Slack / Discord) |
+| `Mod+M` | Music (Supersonic) *(laptop only)* |
+| `Mod+G` | Comms screen: Evolution ∣ Slack / Discord *(laptop only)* |
 | `Mod+D` | App launcher (fuzzel — type any app) |
 
 ## 📻 Ham radio (shack PC only)
@@ -30,6 +30,10 @@ These binds do nothing on the laptop, where none of the apps are installed.
 
 Evolution, Slack and Discord have no keys of their own — `Mod+G` lays all three
 out together, and `Mod+D` launches any one on its own.
+
+*(laptop only)* binds are hostname-guarded: they exist in the shared config but do
+nothing on the kb3lyb shack PC, where those apps are installed but not wanted on a
+shortcut. `Mod+D` (fuzzel) still launches any of them there by name.
 
 ## 🖥 System & tools
 | Key | Action |

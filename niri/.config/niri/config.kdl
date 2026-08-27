@@ -320,13 +320,22 @@ binds {
     // per-app key was a third way to do something already covered twice. Dropping
     // them is what freed Mod+E, below.
     Mod+B       { spawn "flatpak" "run" "org.mozilla.firefox"; }             // Browser (Firefox)
-    Mod+C       { spawn "code"; }                                            // Code (VS Code)
+    // LAPTOP ONLY — hostname-guarded, same trick as the Nextcloud spawn. The apps
+    // are installed on the shack PC too, but are not wanted on a shortcut there;
+    // Mod+D (fuzzel) still launches any of them by name. A guarded bind exists but
+    // does nothing on kb3lyb, which is why KEYBINDS.md marks them laptop-only.
+    Mod+C       { spawn "sh" "-c" "[ $(hostname -s) = kb3lyb ] && exit 0; exec code"; }   // Code (VS Code) — laptop only
     Mod+E       { spawn "thunar"; }                                          // Explorer (Thunar) — note Mod+Shift+E quits niri
     Mod+P       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-pick"; } // Passwords — rbw picker → clipboard (Bitwarden app can't copy on niri)
     Mod+O       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/rbw-otp"; }  // OTP — rbw TOTP code → clipboard
-    Mod+M       { spawn "flatpak" "run" "io.github.dweymouth.supersonic"; }  // Music (Supersonic)
+    Mod+M       { spawn "sh" "-c" "[ $(hostname -s) = kb3lyb ] && exit 0; exec flatpak run io.github.dweymouth.supersonic"; }  // Music (Supersonic) — laptop only
     Mod+N       { spawn "flatpak" "run" "net.cozic.joplin_desktop"; }        // Notes (Joplin)
-    Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord (the only bind for these three)
+    // Group comms — fresh workspace: Evolution | Slack/Discord. LAPTOP ONLY: this is
+    // the only thing that launches Slack, and Slack is not wanted on the shack PC.
+    // Guarding the whole bind takes Evolution and Discord with it, which is the
+    // intended trade — the comms SCREEN is a work-comms layout, not a shack one, and
+    // all three are still reachable individually through Mod+D (fuzzel).
+    Mod+G       { spawn "sh" "-c" "[ $(hostname -s) = kb3lyb ] && exit 0; exec $HOME/.config/niri/scripts/comms"; } // Group comms — laptop only
     Mod+T       { spawn "sh" "-c" "exec toolbox run -c voice $HOME/.local/bin/voice-dictate"; } // Talk — toggle voice dictation (whisper.cpp in `voice` toolbox → wtype into focused window)
 
     // --- HAM RADIO (kb3lyb shack PC) ------------------------------------------
