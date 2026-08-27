@@ -1,0 +1,60 @@
+#!/bin/sh
+# winlink — bring up the whole Winlink stack in one key (Mod+I, "Inbox").
+#
+#   VARA HF (Wine)  ->  modem, TCP 8300/8301
+#   pat http        ->  web UI, TCP 8080
+#   browser         ->  opens the UI
+#
+# Each part is started ONLY if it is not already up, so pressing the key again is
+# a safe way to re-open the browser or recover a piece that died. The checks are on
+# the LISTENING PORTS rather than on process names: that is what actually matters to
+# the next component, it costs nothing, and it avoids `pgrep -f` matching this
+# script's own command line (which is a real trap — see SETUP §6.9).
+#
+# VARA is a Windows application under Wine and is deliberately NOT a service: it
+# needs a soundcard and a visible waterfall, so it belongs to an operating session.
+# Its prefix is win64 with plain `wine` — do NOT add WINEARCH=win32 (SETUP §6.8b).
+
+VARA_PREFIX="$HOME/.local/share/wineprefixes/winlink64"
+VARA_EXE="$VARA_PREFIX/drive_c/VARA/VARA.exe"
+PAT_URL="http://localhost:8080"
+
+note() { command -v notify-send >/dev/null 2>&1 && notify-send "winlink" "$1"; }
+
+# Is anything listening on the given TCP port?
+listening() { ss -ltn 2>/dev/null | grep -q ":$1 "; }
+
+# --- VARA -------------------------------------------------------------------
+if listening 8300; then
+    :
+elif [ -x "$VARA_EXE" ]; then
+    # setsid so VARA outlives this script and does not die with the spawning shell.
+    # No WINEARCH: Fedora's Wine is new-WoW64 and runs this 32-bit app in a 64-bit
+    # prefix. WINEDEBUG=-all keeps a noisy fixme stream out of the journal.
+    setsid env WINEPREFIX="$VARA_PREFIX" WINEDEBUG=-all \
+        wine "$VARA_EXE" >/dev/null 2>&1 &
+else
+    note "VARA not installed at $VARA_EXE — see SETUP 6.9"
+fi
+
+# --- Pat web UI -------------------------------------------------------------
+# `pat http` serves the mailbox UI and holds the Winlink credentials, so it runs as
+# the operator, on demand — never as a system service (see install-pat.sh).
+if ! listening 8080; then
+    setsid pat http >/dev/null 2>&1 &
+    # Give it a moment to bind before the browser asks for the page, otherwise the
+    # first load races the listener and shows a connection error.
+    i=0
+    while [ "$i" -lt 20 ]; do
+        listening 8080 && break
+        sleep 0.25
+        i=$((i + 1))
+    done
+fi
+
+# --- Browser ----------------------------------------------------------------
+if listening 8080; then
+    xdg-open "$PAT_URL" >/dev/null 2>&1 &
+else
+    note "pat http did not come up on 8080"
+fi

@@ -16,6 +16,18 @@ Source of truth is [`niri/.config/niri/config.kdl`](niri/.config/niri/config.kdl
 | `Mod+G` | Comms screen (fresh workspace: Evolution ∣ Slack / Discord) |
 | `Mod+D` | App launcher (fuzzel — type any app) |
 
+## 📻 Ham radio (shack PC only)
+| Key | App |
+|---|---|
+| `Mod+W` | **W**SJT-X — weak-signal digital (FT8/FT4) |
+| `Mod+S` | **S**tation log (QLog) |
+| `Mod+A` | **A**ll-mode digital (fldigi) |
+| `Mod+I` | **I**nbox — Winlink: starts VARA + `pat http`, opens the web UI |
+
+`Mod+I` brings the whole Winlink stack up in one go and only starts the parts that
+are not already running, so pressing it again is a safe way to re-open the browser.
+These binds do nothing on the laptop, where none of the apps are installed.
+
 Evolution, Slack and Discord have no keys of their own — `Mod+G` lays all three
 out together, and `Mod+D` launches any one on its own.
 

@@ -328,6 +328,19 @@ binds {
     Mod+N       { spawn "flatpak" "run" "net.cozic.joplin_desktop"; }        // Notes (Joplin)
     Mod+G       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/comms"; } // Group comms — fresh workspace: Evolution | Slack/Discord (the only bind for these three)
     Mod+T       { spawn "sh" "-c" "exec toolbox run -c voice $HOME/.local/bin/voice-dictate"; } // Talk — toggle voice dictation (whisper.cpp in `voice` toolbox → wtype into focused window)
+
+    // --- HAM RADIO (kb3lyb shack PC) ------------------------------------------
+    // Inert on the laptop: none of these are installed there, so the binds cost
+    // nothing and need no hostname guard — unlike spawn-at-startup entries.
+    //
+    // The obvious first letters were already taken by window management (Q close,
+    // F maximize, D launcher, L focus-right, P passwords), so these use free keys
+    // with the mnemonic spelled out rather than a letter that merely looks right:
+    Mod+W       { spawn "wsjtx"; }                                           // WSJT-X — weak-signal digital (FT8/FT4)
+    Mod+S       { spawn "qlog"; }                                            // Station log (QLog)
+    Mod+A       { spawn "fldigi"; }                                          // All-mode digital (fldigi)
+    Mod+I       { spawn "sh" "-c" "exec $HOME/.config/niri/scripts/winlink"; } // Inbox — Winlink: VARA + pat http + browser
+
     Mod+Shift+T { spawn "sh" "-c" "exec $HOME/.local/bin/voice-control"; } // Talk+control — toggle niri voice command mode (Vosk grammar → niri msg action)
 
     // Clipboard history picker.
