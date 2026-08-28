@@ -153,19 +153,25 @@ spawn-at-startup "flatpak" "run" "com.github.wwmm.easyeffects" "--service-mode" 
 // OAuth token lives in ~/.config/rclone (never in the repo); this just starts the
 // user mount unit at login (systemd unit in the dotfiles systemd/ package).
 spawn-at-startup "systemctl" "--user" "start" "rclone-onedrive-iid.service"
-// Nextcloud desktop sync client (flatpak). --background starts it straight to the
-// tray (waybar's tray module shows the SNI icon) instead of popping its window,
-// mirroring EasyEffects' --hide-window. Account/creds live in the flatpak's own
-// config (~/.var/app/com.nextcloud.desktopclient.nextcloud), never in the repo.
+// Nextcloud desktop sync client (flatpak), as a user service rather than a bare
+// spawn. It WAS spawned directly here; on 2026-08-27 that silently did not start
+// at all — no process, no scope, no log — after working on the four boots before
+// it, and spawn-at-startup captures nothing, so there was nothing to diagnose.
+// The unit logs the launch, then checks the client actually appeared and fails
+// loudly if it did not. Read the header in nextcloud-client.service for the full
+// story, including why it cannot supervise the process itself; the flags and the
+// reason for --background live there too, next to what runs them.
 //
-// LAPTOP ONLY — hence the hostname guard. On the kb3lyb shack PC Nextcloud is a
-// MOUNT, never a local clone: the tree is ~88 GB against a 238 GB disk that also
-// carries two rpm-ostree deployments (SETUP §6.6b). That machine gets
-// rclone-nextcloud.service, started just below, and must NOT also run this client
-// — the two would fight over the same ~/Nextcloud path, and the sync client would
-// try to pull the whole tree down. Unlike `output` blocks, spawn-at-startup has no
-// natural per-host silence, so the guard is explicit.
-spawn-at-startup "sh" "-c" "[ $(hostname -s) = kb3lyb ] && exit 0; exec flatpak run com.nextcloud.desktopclient.nextcloud --background"
+// LAPTOP ONLY. On the kb3lyb shack PC Nextcloud is a MOUNT, never a local clone:
+// the tree is ~88 GB against a 238 GB disk that also carries two rpm-ostree
+// deployments (SETUP §6.6b). That machine gets rclone-nextcloud.service, started
+// just below, and must NOT also run this client — the two would fight over the
+// same ~/Nextcloud path, and the sync client would try to pull the whole tree
+// down. That guard used to be an inline `[ $(hostname -s) = kb3lyb ] && exit 0`
+// wrapped around the spawn; it is now ConditionHost=!kb3lyb inside the unit, so
+// it sits with the thing it guards and systemd logs the skip rather than a bare
+// `exit 0` swallowing it.
+spawn-at-startup "systemctl" "--user" "start" "nextcloud-client.service"
 // kb3lyb shack PC: the rclone WebDAV mount, the counterpart to the guard above.
 // Inert on the laptop, where the unit does not exist (systemctl start just fails).
 spawn-at-startup "systemctl" "--user" "start" "rclone-nextcloud.service"

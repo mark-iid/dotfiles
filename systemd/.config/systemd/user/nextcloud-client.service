@@ -1,0 +1,57 @@
+[Unit]
+Description=Nextcloud desktop sync client (flatpak)
+# WHY THIS IS A UNIT AND NOT spawn-at-startup. It was
+# `spawn-at-startup "flatpak" "run" "com.nextcloud.desktopclient.nextcloud" "--background"`
+# in niri's config. On 2026-08-27 that spawn simply did not happen: no process, no
+# transient scope, no client session log, no error anywhere — on a boot where it
+# had started cleanly on each of the four boots before it. The cause is still
+# unknown, and that is the point: spawn-at-startup is fire-and-forget, so niri
+# discards the child's stdout/stderr and says nothing when it dies. There was
+# nothing left to diagnose.
+#
+# The failure was silent for four hours, and what it was silently not doing was
+# getting an off-machine backup of the image signing key to the server. Same shape
+# as the hazard kb3lyb-image-age exists for in the image repo (DESIGN §5): a
+# safety property that holds only while something quietly runs, with no signal
+# when it stops.
+PartOf=graphical-session.target
+After=graphical-session.target
+# LAPTOP ONLY. On the kb3lyb shack PC Nextcloud is a mount, not a local clone —
+# ~88 GB against a 238 GB disk that also holds two rpm-ostree deployments — so
+# that machine runs rclone-nextcloud.service instead. Running both would put two
+# things on the same ~/Nextcloud path, and this client would try to pull the whole
+# tree down. The guard lived as an inline hostname test around the niri spawn;
+# here systemd logs the skip, where `exit 0` in a shell wrapper looked identical
+# to a successful start.
+ConditionHost=!kb3lyb
+
+[Service]
+# WHY oneshot AND NOT simple. `flatpak run` does not stay as the app's parent.
+# flatpak 1.18 hands the app off to its own transient scope
+# (app-flatpak-com.nextcloud.desktopclient.nextcloud-*.scope) and exits 0, and
+# there is no flag to stop it — `flatpak run --help` offers nothing for scopes.
+# Under Type=simple the unit therefore goes inactive within a second while the
+# client runs on happily, Restart=on-failure can never fire because the exit was
+# clean, and `systemctl --user status` reports dead for a working client. That
+# unit would look like supervision and provide none. Verified, not assumed:
+# Type=simple was tried first and did exactly this.
+#
+# So this does not supervise the process — it cannot. It does the one thing that
+# addresses the actual failure: turns "silently never started" into a failed unit
+# with a journal entry.
+Type=oneshot
+RemainAfterExit=yes
+# --background starts straight to the tray (waybar's tray module renders the SNI
+# icon) rather than popping the window, mirroring EasyEffects' --hide-window.
+# Account and credentials live in the flatpak's own config under
+# ~/.var/app/com.nextcloud.desktopclient.nextcloud — never in this repo.
+ExecStart=/usr/bin/flatpak run com.nextcloud.desktopclient.nextcloud --background
+# ExecStart returning 0 only means flatpak accepted the request. Confirm the
+# client actually came up. Anchored on ^/app/bin/nextcloud so it matches the app
+# inside the sandbox and not the two bwrap wrappers around it.
+ExecStartPost=/bin/sh -c 'for i in $(seq 30); do pgrep -f "^/app/bin/nextcloud" >/dev/null && exit 0; sleep 1; done; echo "client did not appear within 30s of flatpak run returning" >&2; exit 1'
+# Retry a failed launch rather than giving up the way the bare spawn did. Bounded
+# by systemd's default start limit, so a genuinely broken client ends up failed
+# and visible instead of looping forever.
+Restart=on-failure
+RestartSec=15
