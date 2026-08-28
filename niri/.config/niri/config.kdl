@@ -157,10 +157,11 @@ spawn-at-startup "systemctl" "--user" "start" "rclone-onedrive-iid.service"
 // spawn. It WAS spawned directly here; on 2026-08-27 that silently did not start
 // at all — no process, no scope, no log — after working on the four boots before
 // it, and spawn-at-startup captures nothing, so there was nothing to diagnose.
-// The unit logs the launch, then checks the client actually appeared and fails
-// loudly if it did not. Read the header in nextcloud-client.service for the full
-// story, including why it cannot supervise the process itself; the flags and the
-// reason for --background live there too, next to what runs them.
+// The unit supervises the client and restarts it if it dies, and a failed launch
+// fails visibly instead of vanishing. Read the header in nextcloud-client.service
+// for the full story — including why testing it from a restart rather than a cold
+// stop will mislead you; the flags and the reason for --background live there
+// too, next to what runs them.
 //
 // LAPTOP ONLY. On the kb3lyb shack PC Nextcloud is a MOUNT, never a local clone:
 // the tree is ~88 GB against a 238 GB disk that also carries two rpm-ostree

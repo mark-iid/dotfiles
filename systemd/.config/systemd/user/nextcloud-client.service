@@ -26,32 +26,27 @@ After=graphical-session.target
 ConditionHost=!kb3lyb
 
 [Service]
-# WHY oneshot AND NOT simple. `flatpak run` does not stay as the app's parent.
-# flatpak 1.18 hands the app off to its own transient scope
-# (app-flatpak-com.nextcloud.desktopclient.nextcloud-*.scope) and exits 0, and
-# there is no flag to stop it — `flatpak run --help` offers nothing for scopes.
-# Under Type=simple the unit therefore goes inactive within a second while the
-# client runs on happily, Restart=on-failure can never fire because the exit was
-# clean, and `systemctl --user status` reports dead for a working client. That
-# unit would look like supervision and provide none. Verified, not assumed:
-# Type=simple was tried first and did exactly this.
+# WHY simple, and a warning about testing this. `flatpak run` stays attached as
+# the app's parent for its lifetime, so Type=simple tracks the client properly and
+# Restart=on-failure genuinely restarts a client that dies.
 #
-# So this does not supervise the process — it cannot. It does the one thing that
-# addresses the actual failure: turns "silently never started" into a failed unit
-# with a journal entry.
-Type=oneshot
-RemainAfterExit=yes
+# This unit briefly shipped as Type=oneshot on the theory that flatpak detaches
+# into its own transient scope and exits 0. It does do that — but ONLY when an
+# instance is already running and the new `flatpak run` hands off to it, which is
+# exactly the state a test leaves behind if you restart the unit without stopping
+# the client first. On a cold start at login, nothing to hand off to, flatpak stays
+# attached. Type=oneshot then waits forever for an ExecStart that never returns
+# (oneshot defaults TimeoutStartUSec=infinity), so the unit sits in `activating`
+# permanently and any ExecStartPost verification never runs.
+#
+# If you change this, test from a genuinely stopped client, not a restart.
+Type=simple
 # --background starts straight to the tray (waybar's tray module renders the SNI
 # icon) rather than popping the window, mirroring EasyEffects' --hide-window.
 # Account and credentials live in the flatpak's own config under
 # ~/.var/app/com.nextcloud.desktopclient.nextcloud — never in this repo.
 ExecStart=/usr/bin/flatpak run com.nextcloud.desktopclient.nextcloud --background
-# ExecStart returning 0 only means flatpak accepted the request. Confirm the
-# client actually came up. Anchored on ^/app/bin/nextcloud so it matches the app
-# inside the sandbox and not the two bwrap wrappers around it.
-ExecStartPost=/bin/sh -c 'for i in $(seq 30); do pgrep -f "^/app/bin/nextcloud" >/dev/null && exit 0; sleep 1; done; echo "client did not appear within 30s of flatpak run returning" >&2; exit 1'
-# Retry a failed launch rather than giving up the way the bare spawn did. Bounded
-# by systemd's default start limit, so a genuinely broken client ends up failed
-# and visible instead of looping forever.
+# The point of the unit: a launch that fails now fails visibly and is retried,
+# instead of the bare spawn-at-startup's silent one-shot nothing.
 Restart=on-failure
 RestartSec=15
