@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic health check for the Flipper fzfs mount
+
+[Timer]
+OnActiveSec=20s
+OnUnitActiveSec=15s
+AccuracySec=2s
+
+[Install]
+WantedBy=default.target

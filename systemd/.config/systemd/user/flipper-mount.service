@@ -1,0 +1,18 @@
+[Unit]
+Description=Mount Flipper Zero storage via FUSE (fzfs)
+Documentation=https://github.com/dakhnod/fzfs
+# Stop trying after 6 failed starts in 2min (e.g. a wedged link needing a replug),
+# instead of thrashing forever.
+StartLimitIntervalSec=120
+StartLimitBurst=6
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/fusermount -uz %h/flipper
+ExecStart=%h/src/fzfs/mount-flipper.sh /dev/serial/by-id/usb-Flipper_Devices_Inc._FinkPloy_flip_FinkPloy-if00 %h/flipper
+# ExecStop unmounts first so fzfs's FUSE loop exits cleanly (no SIGKILL needed when healthy).
+ExecStop=-/usr/bin/fusermount -uz %h/flipper
+ExecStopPost=-/usr/bin/fusermount -uz %h/flipper
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10

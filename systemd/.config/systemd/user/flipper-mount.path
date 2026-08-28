@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for Flipper Zero and mount its storage
+
+[Path]
+PathExists=/dev/serial/by-id/usb-Flipper_Devices_Inc._FinkPloy_flip_FinkPloy-if00
+Unit=flipper-mount.service
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,6 @@
+[Unit]
+Description=Flipper fzfs mount health check (watchdog)
+
+[Service]
+Type=oneshot
+ExecStart=%h/src/fzfs/flipper-health.sh
