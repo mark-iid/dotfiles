@@ -105,6 +105,29 @@
 #   a subdirectory rather than a tree with large irrelevant files in it (~/…/dos
 #   is 82M, of which 75M is an AM2R zip that has nothing to do with DOS).
 #
+# WHY ARROW KEYS COUNT TWICE WITHOUT -global i8042.kbd-throttle=on
+#   A DOS program that reads the PS/2 data port directly expects a byte to sit
+#   there for a few hundred microseconds. QEMU treats the read as an acknowledge
+#   and drops the NEXT byte in immediately. Arrows are two bytes — the E0 prefix
+#   then the scancode — so a program that reads twice sees two keystrokes from
+#   one press, and every menu skips every other entry. Plain letters are one byte
+#   and are unaffected, which is why only the arrows look broken.
+#
+#   That is why the same binary behaves on real hardware and under other
+#   emulators: they leave the byte in place long enough. QEMU 6.1 added
+#   i8042.kbd-throttle for exactly this (the bug reports name Borland Turbo
+#   Vision apps and GW-BASIC); it is on unconditionally above.
+#
+#   Verified on Directory Master's menu: one Down with the default settings
+#   jumps from "Directory Graph" to "Directory Compare"; with kbd-throttle it
+#   lands on "Directory Listing".
+#
+#   Note this is NOT a host input problem, which is the tempting first guess. A
+#   single synthetic key (QEMU monitor `sendkey down`) doubles too, and MS-DOS
+#   EDIT — which goes through INT 16h rather than polling the port — advances
+#   exactly one line under the same conditions. The difference is how the guest
+#   program reads the keyboard, not how the key arrives.
+#
 # WHY THE COLOURS LOOK WRONG IN A TERMINAL, AND WHAT --vga DOES
 #   QEMU's curses backend does not paint colours. It emits ANSI colour INDEXES
 #   and the terminal decides what they look like, so DOS is drawn in whatever
@@ -205,7 +228,10 @@ run_vm() {
         esac
     done
 
-    local args=("$QEMU" -machine pc -m "$mem" -rtc base=localtime -nic none -name dosvm)
+    # kbd-throttle: without it, arrow keys register twice in programs that poll
+    # the PS/2 data port the way DOS-era code does. See the header. Needs QEMU 6.1+.
+    local args=("$QEMU" -machine pc -m "$mem" -rtc base=localtime -nic none -name dosvm
+                -global i8042.kbd-throttle=on)
 
     # DOS is 16-bit real mode, which KVM handles fine; TCG only costs speed.
     if [ -w /dev/kvm ]; then args+=(-enable-kvm); else warn "no writable /dev/kvm — falling back to slow TCG emulation"; fi
