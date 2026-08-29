@@ -27,6 +27,7 @@
 #           --rw          let the guest write through to DIR — see the warning
 #           --gui         GTK window instead of curses (needed for graphics)
 #           --snapshot    discard all writes to the hard disk on exit
+#           --vga         open a ghostty window carrying the real VGA palette
 #
 # WHAT IS ALREADY ON THIS MACHINE (surveyed 2026-08-28, under ~/Nextcloud/Documents/Archive)
 #
@@ -103,6 +104,22 @@
 #   mangled on the way in, and the whole directory is synthesised, so point -d at
 #   a subdirectory rather than a tree with large irrelevant files in it (~/…/dos
 #   is 82M, of which 75M is an AM2R zip that has nothing to do with DOS).
+#
+# WHY THE COLOURS LOOK WRONG IN A TERMINAL, AND WHAT --vga DOES
+#   QEMU's curses backend does not paint colours. It emits ANSI colour INDEXES
+#   and the terminal decides what they look like, so DOS is drawn in whatever
+#   16-colour palette the terminal happens to carry. Ghostty's default "blue" is
+#   #81a2be, so QuickBASIC's #0000aa background arrives as washed-out steel and
+#   its cyan status bar as pale green. Nothing is misconfigured — the guest never
+#   sends a colour value at all, only an index.
+#
+#   --vga re-execs this script inside one ghostty window whose palette is set to
+#   the IBM VGA text colours (every ghostty config key is also a CLI flag), so
+#   the DOS window looks right while every other terminal keeps your own theme.
+#   DOSVM_VGA guards against the relaunch relaunching itself.
+#
+#   The alternative is --gui, where QEMU rasterises the true RGB values itself
+#   and the terminal palette never enters into it.
 #
 # GETTING OUT
 #   FreeDOS:  fdapm poweroff        (a clean APM shutdown, the tidy way)
@@ -243,6 +260,30 @@ run_vm() {
 
     exec "${args[@]}"
 }
+
+# --vga: relaunch in a ghostty window carrying the IBM VGA text palette. Values
+# are the standard CGA/VGA set, in ANSI index order (so ANSI 4 "blue" gets VGA
+# blue #0000aa and ANSI 3 "yellow" gets VGA brown #aa5500).
+if [ "${DOSVM_VGA:-0}" != 1 ]; then
+    _pass=(); _vga=0
+    for _a in "$@"; do
+        [ "$_a" = "--vga" ] && { _vga=1; continue; }
+        _pass+=("$_a")
+    done
+    if [ "$_vga" = 1 ]; then
+        command -v ghostty >/dev/null || die "--vga needs ghostty; use --gui instead"
+        exec env DOSVM_VGA=1 ghostty \
+            --palette=0=#000000  --palette=1=#aa0000  --palette=2=#00aa00 \
+            --palette=3=#aa5500  --palette=4=#0000aa  --palette=5=#aa00aa \
+            --palette=6=#00aaaa  --palette=7=#aaaaaa  --palette=8=#555555 \
+            --palette=9=#ff5555  --palette=10=#55ff55 --palette=11=#ffff55 \
+            --palette=12=#5555ff --palette=13=#ff55ff --palette=14=#55ffff \
+            --palette=15=#ffffff \
+            --background=#000000 --foreground=#aaaaaa --title=DOS \
+            -e "$0" ${_pass[@]+"${_pass[@]}"}
+    fi
+    set -- ${_pass[@]+"${_pass[@]}"}
+fi
 
 case "${1:-}" in
     new)            shift; cmd_new "$@" ;;
