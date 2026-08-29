@@ -68,6 +68,24 @@
 #   Keep the disk at or under 2G — that is the FAT16 partition ceiling, and
 #   MS-DOS 6.22 in particular is happiest near the 512M default.
 #
+# BUILDING PBCLONE: BLDLIB.BAT IS BROKEN UNDER COMMAND.COM
+#   pbc30a ships BLDLIB.BAT to build PBCLONE.LIB/.QLB, and it cannot work as
+#   shipped: its loops read `for %x in (*.bas)`, which is COMMAND-LINE syntax. A
+#   batch file needs `%%x`. So BC never runs, no .OBJ appears, and the batch jumps
+#   to its ErrNoOBJ branch — which blames your PATH and then hits the `cls` at
+#   :Intro, wiping the explanation and leaving only the help screen. The PATH is
+#   fine; the batch is wrong.
+#
+#   A corrected version is already on the disk as C:\BLD.BAT, and PBCLONE.LIB
+#   (394,705) and PBCLONE.QLB (217,562) are built. To redo it by hand:
+#       cd \pbc30a\bas
+#       for %x in (*.bas) do bc %x/o;          <- single %% AT THE PROMPT is right
+#       for %x in (*.obj) do lib pbc$bas+%x;
+#       cd \pbc30a
+#       lib pbclone.lib+pbc$main.lib+pbc$near.lib+bas\pbc$bas.lib;
+#       link pbclone.lib/q/se:2048,pbclone.qlb,nul,bqlb45;
+#   Then use it with:  QB /L C:\PBC30A\PBCLONE.QLB
+#
 # WHAT -d ACTUALLY DOES, AND WHY THE DEFAULT IS WHAT IT IS
 #   It hands the directory to QEMU's vvfat, which synthesises a FAT filesystem
 #   from it on the fly. By default the drive is attached with snapshot=on: the
