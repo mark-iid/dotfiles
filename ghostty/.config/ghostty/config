@@ -13,3 +13,11 @@ background-opacity = 1.0
 
 cursor-style = block
 cursor-style-blink = true
+
+# Escape hatch for a terminal left in a broken mode by a dead remote session.
+# .zshrc's _reset_terminal_modes precmd undoes the known leaks (mouse reporting,
+# kitty keyboard protocol) at every prompt, but it deliberately cannot touch tty
+# modes or the alternate screen, and a shell started before that hook existed is
+# beyond its reach. This is the terminal's own full reset, so it works even when
+# the keyboard is typing garbage and `fixterm` cannot be typed. Unbound by default.
+keybind = ctrl+shift+r=reset

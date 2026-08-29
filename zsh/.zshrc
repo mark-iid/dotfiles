@@ -175,6 +175,18 @@ _reset_terminal_modes() {
   printf '\e[?1000l\e[?1002l\e[?1003l\e[?1004l\e[?1006l\e[?1015l'
   # cursor visible, autowrap on, attributes cleared
   printf '\e[?25h\e[?7h\e[0m'
+  # kitty keyboard protocol, the same leak by a different mechanism. A program
+  # that pushed flags including "report event types" (2) makes the terminal
+  # report every KEY RELEASE as \e[<code>;1:3u, so a dead ssh turns `exit` into
+  #     e01;1:3ux20;1:3ui05;1:3ut16;1:3u
+  # — the char, then the tail of the release report for 101/120/105/116, typed
+  # onto the line because zsh does not speak the protocol and only swallows the
+  # \e[1 prefix. Pop what the dead program pushed (a tmux+nvim nesting can push
+  # more than one; popping an empty stack is ignored), then force the base entry
+  # to 0. zsh never enables this itself, so 0 is the correct resting state.
+  printf '\e[<u\e[<u\e[<u\e[=0;1u'
+  # xterm modifyOtherKeys — the pre-kitty way to ask for the same reports
+  printf '\e[>4;0m'
 }
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd _reset_terminal_modes
