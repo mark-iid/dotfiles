@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# dosvm — run DOS inside this terminal, no window, via QEMU's curses display.
+#
+# WHY QEMU AND NOT DOSBOX. QEMU's curses backend turns the emulated VGA *text*
+# mode into real terminal text, so a DOS text-mode program is sharp, selectable,
+# copy-pasteable, and works over ssh. dosbox cannot do this at all: dosbox-staging
+# is SDL2 and has no terminal renderer, and the old SDL_VIDEODRIVER=caca trick
+# needed SDL 1.2, which it no longer uses.
+#
+# THE LIMIT THAT FOLLOWS FROM THAT: a terminal can only show text. DOS GRAPHICS
+# modes are not drawn — a game will boot and run, invisibly. Use --gui for those.
+# It is the same VM in a GTK window, so switching costs nothing but the flag.
+#
+# (dosemu2 is the other honest answer and is lighter — it runs real-mode code on
+# the CPU instead of emulating a PC — but Fedora only carries dosemu 1.4.0.8, a
+# 2013 git snapshot, so QEMU is the maintained route.)
+#
+# USAGE
+#   dosvm [DISK]                 boot DISK (a name under disks/, or a path)
+#   dosvm new NAME [SIZE]        create a blank qcow2 to install onto (def 512M)
+#   dosvm install NAME [flags]   boot install media with NAME as the hard disk
+#   dosvm ls                     list disks and media
+#   dosvm fetch-freedos          download the FreeDOS 1.4 LiveCD into media/
+#
+#   flags:  --cdrom ISO   --floppy IMG   --boot a|c|d   -m MB
+#           -d DIR        share a host directory as the next drive (D:)
+#           --rw          let the guest write through to DIR — see the warning
+#           --gui         GTK window instead of curses (needed for graphics)
+#           --snapshot    discard all writes to the hard disk on exit
+#
+# WHAT IS ALREADY ON THIS MACHINE (surveyed 2026-08-28, under ~/Nextcloud/Documents/Archive)
+#
+#   windows/dos.iso   genuine MS-DOS 6.22 setup floppies at MSDOS622/DOS622D{1,2,3}.FLP.
+#                     TAKE THE .FLP COPIES, NOT THE .IMA ONES BESIDE THEM. The .IMA
+#                     boot sector is wiped — every byte 0xF6, which is FORMAT's fill —
+#                     so SeaBIOS rejects them with "not a bootable disk" even though
+#                     the files inside are intact and list fine. The .FLP images open
+#                     with eb 3c 90 and end 55 aa, and boot. Confirmed by hand.
+#                     The same ISO also holds WordPerfect 5.1 and Norton Utilities 7,
+#                     both text-mode, both therefore usable in this terminal.
+#   dos/              the A86 assembler, PowerBASIC 3.0, the QuickBASIC/LibWiz
+#                     libraries, TheDraw 4.63, and MARK{ASM,BAS,LIB,PIX,TXT} — your
+#                     own source. All text-mode. dos/uncompressed.iso is a 2009 burn
+#                     of the same A86 material, not install media.
+#
+#   The three floppies were extracted to media/ with:
+#       7z e -o"$HOME/.local/share/dosvm/media" ~/Nextcloud/Documents/Archive/windows/dos.iso \
+#            "MSDOS622/DOS622D1.FLP" "MSDOS622/DOS622D2.FLP" "MSDOS622/DOS622D3.FLP"
+#
+#   Install MS-DOS 6.22, then work on the archive with it mounted as D::
+#       dosvm new msdos622
+#       dosvm install msdos622 --floppy ~/.local/share/dosvm/media/DOS622D1.FLP --boot a
+#       dosvm msdos622 -d ~/Nextcloud/Documents/Archive/dos/MARKASM
+#
+#   Multi-floppy installers ask for disk 2. Swap without stopping the VM through
+#   QEMU's monitor: Alt+2 (or Esc then 2) to reach it, then
+#       change floppy0 /home/mark/.local/share/dosvm/media/DOS622D2.FLP
+#   and Alt+1 to go back. This is the sharp edge of installing DOS under QEMU;
+#   nothing else about it is unusual.
+#
+#   Keep the disk at or under 2G — that is the FAT16 partition ceiling, and
+#   MS-DOS 6.22 in particular is happiest near the 512M default.
+#
+# WHAT -d ACTUALLY DOES, AND WHY THE DEFAULT IS WHAT IT IS
+#   It hands the directory to QEMU's vvfat, which synthesises a FAT filesystem
+#   from it on the fly. By default the drive is attached with snapshot=on: the
+#   guest may write to it freely, every write lands in a throwaway overlay, and
+#   THE HOST DIRECTORY IS NEVER TOUCHED. The catch is that those writes are gone
+#   when the VM exits, so anything you want to keep must be saved to C:.
+#
+#   --rw removes the overlay and writes through to the real directory. Upstream
+#   calls vvfat write support experimental and it can corrupt what it points at.
+#   Worse here specifically: the archive above lives inside the Nextcloud sync
+#   replica, so corruption would not stay local — the client would propagate it to
+#   the authoritative copy on nas1. Never point --rw at anything under ~/Nextcloud.
+#
+#   Two more vvfat facts worth knowing: DOS sees 8.3 names, so long filenames are
+#   mangled on the way in, and the whole directory is synthesised, so point -d at
+#   a subdirectory rather than a tree with large irrelevant files in it (~/…/dos
+#   is 82M, of which 75M is an AM2R zip that has nothing to do with DOS).
+#
+# GETTING OUT
+#   FreeDOS:  fdapm poweroff        (a clean APM shutdown, the tidy way)
+#   Anything: Alt+2 then `quit`     (the QEMU monitor, always available)
+#   DOS itself has no shutdown, so on MS-DOS the monitor is the only clean exit.
+set -euo pipefail
+
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}/dosvm"
+DISKS="$DATA/disks"
+MEDIA="$DATA/media"
+
+# FreeDOS 1.4 LiveCD. Pinned because fetch-freedos runs unattended over the
+# network; upstream re-spinning the zip should stop the script, not go unnoticed.
+FREEDOS_URL="https://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/1.4/FD14-LiveCD.zip"
+FREEDOS_SHA="2020ff6bb681967fd6eff8f51ad2e5cd5ab4421165948cef4246e4f7fcaf6339"
+
+QEMU=qemu-system-i386
+
+die()  { printf 'dosvm: %s\n' "$*" >&2; exit 1; }
+warn() { printf 'dosvm: %s\n' "$*" >&2; }
+usage() { sed -n '3,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit "${1:-0}"; }
+
+command -v "$QEMU" >/dev/null || die "$QEMU not found (dnf install qemu-system-x86, or brew)"
+mkdir -p "$DISKS" "$MEDIA"
+
+# A bare name means a disk in the store; anything with a slash is a literal path.
+resolve_disk() {
+    case "$1" in
+        */*) printf '%s\n' "$1" ;;
+        *)   printf '%s\n' "$DISKS/$1.qcow2" ;;
+    esac
+}
+
+# Always pass format= explicitly. Left to probe, QEMU warns on every raw image
+# and restricts writes to block 0, which is exactly where a boot sector lives.
+disk_format() { qemu-img info -- "$1" 2>/dev/null | awk '/^file format:/{print $3; exit}'; }
+
+cmd_new() {
+    local name="${1:?usage: dosvm new NAME [SIZE]}" size="${2:-512M}"
+    local disk; disk=$(resolve_disk "$name")
+    [ -e "$disk" ] && die "$disk already exists"
+    qemu-img create -f qcow2 "$disk" "$size"
+    printf 'Created %s. Install onto it with:\n  dosvm install %s --cdrom ISO   # or --floppy IMG --boot a\n' "$disk" "$name"
+}
+
+cmd_ls() {
+    printf 'disks (%s):\n' "$DISKS"
+    find "$DISKS" -maxdepth 1 -type f -printf '  %-24f %s bytes\n' 2>/dev/null | sort || true
+    printf 'media (%s):\n' "$MEDIA"
+    find "$MEDIA" -maxdepth 1 -type f -printf '  %-24f %s bytes\n' 2>/dev/null | sort || true
+}
+
+cmd_fetch_freedos() {
+    local zip="$MEDIA/FD14-LiveCD.zip" iso="$MEDIA/FD14LIVE.iso"
+    if [ -f "$iso" ]; then printf 'Already have %s\n' "$iso"; return 0; fi
+    printf 'Downloading FreeDOS 1.4 LiveCD (~294M)...\n'
+    curl -fL --progress-bar -o "$zip" "$FREEDOS_URL"
+    printf '%s  %s\n' "$FREEDOS_SHA" "$zip" | sha256sum -c - >/dev/null 2>&1 \
+        || die "checksum mismatch on $zip — upstream changed; verify it by hand and update FREEDOS_SHA"
+    unzip -o -q -d "$MEDIA" "$zip" FD14LIVE.iso
+    rm -f "$zip"
+    printf 'Ready. Its boot menu offers a live environment that needs no install:\n  dosvm --cdrom %s\n' "$iso"
+}
+
+# Shared by `run` and `install`: everything below builds one QEMU command line.
+run_vm() {
+    local disk="" cdrom="" floppy="" boot="" share="" share_rw=0
+    local mem=32 gui=0 snapshot=0
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --cdrom)    cdrom="${2:?--cdrom needs a path}"; shift 2 ;;
+            --floppy)   floppy="${2:?--floppy needs a path}"; shift 2 ;;
+            --boot)     boot="${2:?--boot needs a|c|d}"; shift 2 ;;
+            -m)         mem="${2:?-m needs MB}"; shift 2 ;;
+            -d)         share="${2:?-d needs a directory}"; shift 2 ;;
+            --rw)       share_rw=1; shift ;;
+            --gui)      gui=1; shift ;;
+            --snapshot) snapshot=1; shift ;;
+            -h|--help)  usage ;;
+            -*)         die "unknown flag: $1" ;;
+            *)          [ -n "$disk" ] && die "more than one disk given"; disk="$1"; shift ;;
+        esac
+    done
+
+    local args=("$QEMU" -machine pc -m "$mem" -rtc base=localtime -nic none -name dosvm)
+
+    # DOS is 16-bit real mode, which KVM handles fine; TCG only costs speed.
+    if [ -w /dev/kvm ]; then args+=(-enable-kvm); else warn "no writable /dev/kvm — falling back to slow TCG emulation"; fi
+
+    if [ -n "$disk" ]; then
+        disk=$(resolve_disk "$disk")
+        [ -f "$disk" ] || die "no such disk: $disk (create one with: dosvm new NAME)"
+        args+=(-drive "file=$disk,format=$(disk_format "$disk"),if=ide,index=0,media=disk")
+    fi
+    [ -n "$cdrom" ]  && { [ -f "$cdrom" ]  || die "no such cdrom: $cdrom";   args+=(-cdrom "$cdrom"); }
+    [ -n "$floppy" ] && { [ -f "$floppy" ] || die "no such floppy: $floppy"
+                          args+=(-drive "file=$floppy,format=$(disk_format "$floppy"),if=floppy,index=0"); }
+
+    # driver=vvfat rather than the file=fat:DIR shorthand: the shorthand makes
+    # QEMU probe a synthesised image, which warns, and pinning format=raw on top
+    # of it fails outright with "Block node is read-only".
+    if [ -n "$share" ]; then
+        [ -d "$share" ] || die "no such directory: $share"
+        if [ "$share_rw" = 1 ]; then
+            warn "sharing $share READ-WRITE via vvfat — experimental upstream, and it can corrupt that directory"
+            case "$(readlink -f "$share")" in
+                "$HOME"/Nextcloud/*) warn "…and that path is inside the Nextcloud replica, so damage would sync to nas1" ;;
+            esac
+            args+=(-drive "driver=vvfat,dir=$share,rw=on,if=ide,index=1")
+        else
+            args+=(-drive "driver=vvfat,dir=$share,if=ide,index=1,snapshot=on")
+        fi
+    fi
+
+    # Default boot order: install media if any was given, otherwise the disk.
+    if [ -z "$boot" ]; then
+        if   [ -n "$floppy" ]; then boot=a
+        elif [ -n "$cdrom"  ]; then boot=d
+        else boot=c; fi
+    fi
+    args+=(-boot "order=$boot")
+
+    [ "$snapshot" = 1 ] && args+=(-snapshot)
+
+    if [ "$gui" = 1 ]; then
+        args+=(-display gtk)
+    else
+        # VGA text mode is 80x25 and curses will not scale it down.
+        if [ -t 1 ]; then
+            local cols lines; cols=$(tput cols 2>/dev/null || echo 80); lines=$(tput lines 2>/dev/null || echo 25)
+            { [ "$cols" -ge 80 ] && [ "$lines" -ge 25 ]; } \
+                || warn "terminal is ${cols}x${lines}; VGA text mode needs at least 80x25 and will be clipped"
+        fi
+        args+=(-display curses)
+        printf 'Alt+2 for the QEMU monitor (`quit` to exit, `change floppy0 IMG` to swap disks), Alt+1 to come back.\n'
+    fi
+
+    exec "${args[@]}"
+}
+
+case "${1:-}" in
+    new)            shift; cmd_new "$@" ;;
+    ls)             shift; cmd_ls "$@" ;;
+    fetch-freedos)  shift; cmd_fetch_freedos "$@" ;;
+    install)        shift; [ $# -ge 1 ] || die "usage: dosvm install NAME --cdrom ISO | --floppy IMG"; run_vm "$@" ;;
+    help|-h|--help) usage ;;
+    *)              run_vm "$@" ;;
+esac
