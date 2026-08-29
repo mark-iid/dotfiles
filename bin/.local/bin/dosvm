@@ -55,7 +55,8 @@
 #   Multi-floppy installers ask for disk 2. Swap without stopping the VM through
 #   QEMU's monitor: Alt+2 (or Esc then 2) to reach it, then
 #       change floppy0 /home/mark/.local/share/dosvm/media/DOS622D2.FLP
-#   and Alt+1 to go back. This is the sharp edge of installing DOS under QEMU;
+#   and Alt+1 to go back. Spell the path out in full — the monitor is not a shell
+#   and does not expand ~, it just reports "No such file or directory". This is the sharp edge of installing DOS under QEMU;
 #   nothing else about it is unusual.
 #
 #   Keep the disk at or under 2G — that is the FAT16 partition ceiling, and
