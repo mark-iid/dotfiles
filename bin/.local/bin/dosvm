@@ -56,7 +56,13 @@
 #   QEMU's monitor: Alt+2 (or Esc then 2) to reach it, then
 #       change floppy0 /home/mark/.local/share/dosvm/media/DOS622D2.FLP
 #   and Alt+1 to go back. Spell the path out in full — the monitor is not a shell
-#   and does not expand ~, it just reports "No such file or directory". This is the sharp edge of installing DOS under QEMU;
+#   and does not expand ~, it just reports "No such file or directory".
+#
+#   When Setup finishes and asks for the floppy to be removed, remove it the same
+#   way: Alt+2, then
+#       eject floppy0
+#   and Alt+1 to let it reboot off the hard disk. Or skip that entirely — `quit`
+#   the monitor and run `dosvm msdos622`, which attaches no floppy and boots C:. This is the sharp edge of installing DOS under QEMU;
 #   nothing else about it is unusual.
 #
 #   Keep the disk at or under 2G — that is the FAT16 partition ceiling, and
