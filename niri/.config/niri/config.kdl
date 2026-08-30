@@ -174,7 +174,13 @@ spawn-at-startup "systemctl" "--user" "start" "rclone-onedrive-iid.service"
 // `exit 0` swallowing it.
 spawn-at-startup "systemctl" "--user" "start" "nextcloud-client.service"
 // kb3lyb shack PC: the rclone WebDAV mount, the counterpart to the guard above.
-// Inert on the laptop, where the unit does not exist (systemctl start just fails).
+// This line used to say the unit was "inert on the laptop, where the unit does not
+// exist". It does exist — systemd/ is stowed from dotfiles onto every machine — so
+// this spawn started it at every laptop login, where rclone has no `nextcloud`
+// remote to mount and retried every 10 s until reboot: 2651 failed starts in one
+// boot (2026-08-29). What makes it inert is ConditionHost=kb3lyb inside the unit,
+// which systemd logs as a skip. Do not re-derive inertness from what is installed
+// where; stow means every machine has every unit.
 spawn-at-startup "systemctl" "--user" "start" "rclone-nextcloud.service"
 // Idle lock runs as a user service (swayidle.service, in dotfiles systemd/): lock
 // with gtklock after 5 min, DPMS the displays off after 10, lock before suspend.

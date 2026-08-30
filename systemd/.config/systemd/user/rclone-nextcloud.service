@@ -9,6 +9,27 @@ Documentation=man:rclone(1)
 # Nextcloud desktop sync client.
 After=default.target
 
+# SHACK PC ONLY — the counterpart to ConditionHost=!kb3lyb in
+# nextcloud-client.service, and the reason that one is a Condition and not an
+# inline hostname test: the guard sits with the thing it guards.
+#
+# niri's config used to assert this unit was "inert on the laptop, where the unit
+# does not exist". It was not. systemd/ is stowed from dotfiles, so this file
+# exists on every machine, and spawn-at-startup ran `systemctl --user start` on it
+# at every login. The laptop's rclone.conf has no `nextcloud` remote, so rclone
+# exited 1, Restart=on-failure tried again 10 s later, and that ran until the next
+# reboot — 2651 failed starts in a single boot, discovered 2026-08-29, two days
+# after the unit landed. Nothing surfaced it: the mount that mattered was on the
+# other machine, and on this one the journal was the only place it showed.
+ConditionHost=kb3lyb
+
+# A missing remote is a permanent error, not a transient one, so stop rather than
+# retry forever. Restart still covers what it exists for — a mount dropped by a
+# network blip — but five failures 10 s apart now end in a failed unit you can
+# see in `systemctl --user --failed`, which is where the two days went.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
 [Service]
 Type=notify
 ExecStartPre=-/usr/bin/mkdir -p %h/Nextcloud
