@@ -85,12 +85,32 @@ environment {
     ELECTRON_OZONE_PLATFORM_HINT "auto"
     QT_QPA_PLATFORM "wayland"
     MOZ_ENABLE_WAYLAND "1"
-    // Force the dark GTK theme session-wide. Most GTK3 apps honor
-    // gtk-application-prefer-dark-theme from ~/.config/gtk-3.0/settings.ini, but
-    // XFCE apps (Thunar) ignore that flag and stay light unless the dark *variant*
-    // is named explicitly. Adwaita:dark is the built-in dark variant (no extra
-    // theme package needed). niri exports this to everything it spawns.
-    GTK_THEME "Adwaita:dark"
+    // GTK_THEME is deliberately NOT set here, and must not be re-added.
+    //
+    // It was masking a different bug. The dconf key
+    // org.gnome.desktop.interface gtk-theme was 'Adwaita-dark' — a theme that does
+    // not exist on this image (/usr/share/themes has only Default and Emacs; GTK3's
+    // built-in is plain 'Adwaita'). xdg-desktop-portal serves that value, and GTK3
+    // apps under Wayland take the portal's value over gtk-3.0/settings.ini, so the
+    // lookup failed and GTK3 fell back to LIGHT even with prefer-dark set.
+    // GTK_THEME overrides the portal, which hid that — at the cost of breaking GTK4.
+    //
+    // The cost: GTK_THEME names an *on-disk* theme, and GTK4 ships only "Default".
+    // libadwaita normally sets gtk-theme-name to its "Adwaita-empty" sentinel and
+    // installs the stylesheet itself; an explicit GTK_THEME overrides that sentinel,
+    // so every GTK4 app fell back to Default with no libadwaita CSS at all. Because
+    // niri exports environment{} to everything it spawns, that hit the whole session.
+    // The visible casualty was Bazaar's search page (app names ellipsized to "...",
+    // no card backgrounds); upstream closes these as "your theme is causing this"
+    // — see bazaar-org/bazaar#1818.
+    //
+    // Correct setup, verified with GTK_THEME unset: dconf gtk-theme='Adwaita' +
+    // color-scheme='prefer-dark' -> GTK3 renders dark (bg rgb(53,53,53)) and
+    // libadwaita reports dark with gtk-theme-name='Adwaita-empty'.
+    //
+    // The scoped Environment=GTK_THEME=Adwaita:dark in swayidle.service stays: it
+    // applies only to gtklock, which is GTK3, where naming the variant works.
+
     // XWayland via niri's xwayland-satellite integration.
     DISPLAY ":0"
 }
@@ -127,6 +147,10 @@ layout {
 // systemd/) is started first: it activates graphical-session.target so
 // xdg-desktop-portal comes up (dark-mode color-scheme, file pickers, screencast) —
 // niri here runs as a bare command, not niri.service, so nothing else pulls it up.
+// desktop-appearance first: it sets the dconf gtk-theme/color-scheme keys that
+// xdg-desktop-portal then serves to GTK3 apps. A theme name that does not exist
+// on disk silently makes GTK3 render light — see that unit's comment.
+spawn-at-startup "systemctl" "--user" "start" "desktop-appearance.service"
 spawn-at-startup "systemctl" "--user" "start" "graphical-session-bind.service"
 spawn-at-startup "waybar"
 spawn-at-startup "mako"

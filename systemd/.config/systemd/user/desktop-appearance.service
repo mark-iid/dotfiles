@@ -1,0 +1,32 @@
+[Unit]
+Description=Apply GTK/libadwaita appearance settings for the niri session
+# niri has no settings daemon, so nothing owns these GSettings keys — they are
+# loose user state in dconf, which is how gtk-theme drifted to a broken value and
+# stayed broken. This unit makes them declarative.
+#
+# gtk-theme MUST name a theme that exists on disk. xdg-desktop-portal serves this
+# key verbatim, and GTK3 apps under Wayland take the portal's value *over*
+# ~/.config/gtk-3.0/settings.ini — so a missing theme makes GTK3 fall back to LIGHT
+# even with gtk-application-prefer-dark-theme=1. This image ships only
+# /usr/share/themes/{Default,Emacs}; GTK3's built-in theme is "Adwaita" and there is
+# no "Adwaita-dark" anywhere. The old value was 'Adwaita-dark', and
+# GTK_THEME=Adwaita:dark in niri's environment{} masked it — while breaking every
+# GTK4/libadwaita app in the session, because GTK_THEME overrides libadwaita's
+# "Adwaita-empty" sentinel and leaves GTK4 on its bare Default stylesheet. See the
+# "Adwaita note" in the frameworkimage DESIGN.md.
+#
+# color-scheme is the GTK4/libadwaita lever (AdwStyleManager); GTK3 uses gtk-theme
+# plus prefer-dark from settings.ini. Both are needed.
+#
+# Ordered before graphical-session.target so xdg-desktop-portal reads the correct
+# values at startup rather than relying on a later change signal.
+Before=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# /usr/bin/gsettings, never plain `gsettings`: Homebrew ships one earlier on PATH
+# that reads a different store and silently reports different values than the
+# session actually uses.
+ExecStart=/usr/bin/gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+ExecStart=/usr/bin/gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'
