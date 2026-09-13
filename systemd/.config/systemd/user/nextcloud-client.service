@@ -25,6 +25,23 @@ After=graphical-session.target
 # to a successful start.
 ConditionHost=!kb3lyb
 
+# WHY BOUND THE RETRIES, AND WHY THESE KEYS LIVE HERE. With RestartSec=15 against
+# the default start limit (StartLimitBurst=5 within StartLimitIntervalSec=10s),
+# retries are further apart than the window, so the limit never trips and a
+# missing expansion card produces an endless 15s restart loop. The unit then sits
+# in `activating (auto-restart)`, which is NOT what `systemctl --user --failed`
+# lists — so the loud failure the ExecStartPre= guard exists to produce would be
+# invisible again. Bounding it gives four tries over ~45s, then a stop, leaving
+# the unit parked in `failed` where it actually shows up.
+#
+# These two keys are [Unit] keys. Putting them in [Service] looks plausible and
+# parses without error, but systemd ignores StartLimitIntervalSec there —
+# `systemd-analyze --user verify` says "Unknown key ... in section [Service],
+# ignoring" and the interval stays at the 10s default, i.e. the bound silently
+# does nothing. Confirmed on this machine before moving them up here.
+StartLimitIntervalSec=120
+StartLimitBurst=4
+
 [Service]
 # WHY simple, and a warning about testing this. `flatpak run` stays attached as
 # the app's parent for its lifetime, so Type=simple tracks the client properly and
@@ -40,13 +57,86 @@ ConditionHost=!kb3lyb
 # permanently and any ExecStartPost verification never runs.
 #
 # If you change this, test from a genuinely stopped client, not a restart.
+#
+# SINCE 2026-09-13 that caveat is mostly historical: --die-with-parent on
+# ExecStart (see the note there) means stopping the unit really does stop the
+# client, so a plain restart now cycles it properly instead of handing off to
+# an orphan. Verified. Keep the warning anyway — it explains why the oneshot
+# theory looked right, and it is still true for any flatpak unit WITHOUT that
+# flag.
 Type=simple
+# WHY THIS GUARD, AND WHY NOT RequiresMountsFor. The sync root lives on
+# /var/mnt/data — ext4 on the 1TB Framework expansion card, which is a USB
+# hotplug device (32ac:0005, usb 2-1), not an internal disk. fstab mounts it
+# `nofail`, so any boot where that volume does not mount proceeds normally and
+# /var/mnt/data stays an empty directory. On 2026-09-13 the card was seated as
+# always but simply never enumerated — no USB connect event on usb 2-1, no error
+# either, just silence — so the mount never happened. This unit then started
+# "successfully" at 13:55:20 and the client sat idle for three hours, because its
+# configured localPath /mnt/data/nextcloud/ did not exist. systemd reported the
+# unit as Started for the whole three hours. Same shape as the spawn-at-startup
+# incident above, and as kb3lyb-image-age in the image repo (DESIGN §5): a safety
+# property that holds only while something quietly runs.
+#
+# Note the guard deliberately tests the MOUNT, not the card. The failure that
+# actually happened was a mount that never appeared, and that is the condition
+# that matters here regardless of why the device was missing.
+#
+# RequiresMountsFor=/var/mnt/data DOES NOT WORK HERE — it is a no-op for this
+# purpose in a USER unit. The user manager can see system mount units but cannot
+# pull them in, so systemd silently degrades the directive to ordering only.
+# Verified on this machine with a scratch unit:
+#   RequiresMountsFor=/var/mnt/data
+#     -> After=    ... var-mnt-data.mount ...   (ordering: yes)
+#     -> Requires= basic.target app.slice       (the mount is NOT in it)
+# The unit would still start, and still report success, with the card absent.
+#
+# AssertPathIsMountPoint= is no better for visibility: it refuses the job, but
+# leaves the unit ActiveState=inactive Result=success, so it never turns up in
+# `systemctl --user --failed`. ConditionPathIsMountPoint= is weaker still — a
+# benign "skipped" log line. Only a failing ExecStartPre= produces a genuinely
+# failed unit (ActiveState=failed Result=exit-code), which is the whole point:
+# the breakage has to be visible somewhere you already look.
+ExecStartPre=/usr/bin/mountpoint -q /var/mnt/data
+
 # --background starts straight to the tray (waybar's tray module renders the SNI
 # icon) rather than popping the window, mirroring EasyEffects' --hide-window.
 # Account and credentials live in the flatpak's own config under
 # ~/.var/app/com.nextcloud.desktopclient.nextcloud — never in this repo.
-ExecStart=/usr/bin/flatpak run com.nextcloud.desktopclient.nextcloud --background
+# WHY --die-with-parent. `flatpak run` does not keep the app in this unit's
+# cgroup: the client ends up in its own transient app-flatpak-*.scope under
+# app.slice, with only `flatpak run` left in the service. Two things break as a
+# result, and both were observed on 2026-09-13.
+#
+# 1. `systemctl --user restart` does not restart the client. Stopping the unit
+#    leaves the real process alive in its scope; the new `flatpak run` then finds
+#    a live instance, hands off to it and exits 0, so the unit drops to inactive
+#    while an orphaned client keeps running. Restart=on-failure does not fire,
+#    because exit 0 is not a failure.
+#
+# 2. It is why the shutdown unmount of /var/mnt/data fails. The client holds fds
+#    on the sync journal there (.sync_*.db plus -wal and -shm). Stopping the
+#    service does not stop the process holding them, so umount races the session
+#    teardown and loses with EBUSY (status=32) — 24 failed unmounts to date, and
+#    the five shutdowns before 2026-09-13 all failed.
+#
+#    Scope note, so nobody over-reads this: it is an ordering bug, NOT data loss.
+#    systemd-shutdown's final pass still syncs and remounts what is left
+#    read-only after journald has stopped, so the filesystem is fine — across 59
+#    boots ext4 has needed zero journal recoveries and logged zero errors. The
+#    card's "Unsafe Shutdowns: 37 / 124 power cycles" is a separate thing and is
+#    NOT a record of bad shutdowns by the operator: the NVMe behind the card's
+#    USB bridge only counts a shutdown as safe if it receives an NVMe shutdown
+#    notification, which most USB-NVMe bridges never forward when the host simply
+#    cuts port power. Clean poweroffs still increment it.
+#
+# -p/--die-with-parent ties the sandboxed app's lifetime to `flatpak run`, which
+# IS in this unit's cgroup, so stopping the unit genuinely stops the client and
+# releases the mount. Verified both behaviours after adding it.
+ExecStart=/usr/bin/flatpak run --die-with-parent com.nextcloud.desktopclient.nextcloud --background
 # The point of the unit: a launch that fails now fails visibly and is retried,
 # instead of the bare spawn-at-startup's silent one-shot nothing.
 Restart=on-failure
 RestartSec=15
+# The start limit that bounds these retries is in [Unit] above — it is only
+# honoured there. See the note on StartLimitIntervalSec.
