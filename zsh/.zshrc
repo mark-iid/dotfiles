@@ -52,6 +52,17 @@ fi
 
 # --- prompt + shell tools ------------------------------------------------------
 command -v starship >/dev/null && eval "$(starship init zsh)"
+# zoxide's frecency database is a list of every directory visited, ranked and
+# kept forever. Point it at XDG_RUNTIME_DIR (tmpfs, wiped at logout) so `z` still
+# works within a session but nothing about where the day was spent is ever
+# written to disk. atuin is deliberately left persistent -- see its note below.
+#
+# Trade-off to be aware of: frecency now starts cold every login, so `z proj`
+# needs one cd to the directory before it can jump there. If that becomes
+# annoying the honest alternatives are to accept the on-disk db again, or drop
+# the init line and lose `z` -- not to half-persist it.
+export _ZO_DATA_DIR="${XDG_RUNTIME_DIR:-/run/user/$UID}/zoxide"
+[ -d "$_ZO_DATA_DIR" ] || mkdir -p -m 700 "$_ZO_DATA_DIR"
 command -v zoxide   >/dev/null && eval "$(zoxide init zsh)"
 command -v direnv   >/dev/null && eval "$(direnv hook zsh)"
 # atuin: Aurora ships this init commented out; enable it here (DESIGN §1). The

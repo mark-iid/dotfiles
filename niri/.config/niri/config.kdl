@@ -152,10 +152,22 @@ layout {
 // on disk silently makes GTK3 render light — see that unit's comment.
 spawn-at-startup "systemctl" "--user" "start" "desktop-appearance.service"
 spawn-at-startup "systemctl" "--user" "start" "graphical-session-bind.service"
+spawn-at-startup "systemctl" "--user" "start" "private-history.service"
 spawn-at-startup "waybar"
 spawn-at-startup "mako"
 spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
-spawn-at-startup "sh" "-c" "wl-paste --watch cliphist store"
+// cliphist, with its database on tmpfs. cliphist has no --db flag and no
+// CLIPHIST_DB_PATH; it derives the path from XDG_CACHE_HOME (checked against the
+// binary's strings), so overriding that variable for this one command is the only
+// lever. XDG_RUNTIME_DIR is tmpfs, so the clipboard history — passwords pasted
+// from rbw, tokens, whatever crossed the clipboard — lives in RAM for the session
+// and is gone at logout instead of accumulating in ~/.cache/cliphist.
+//
+// THE Mod+V BIND MUST CARRY THE SAME OVERRIDE or the picker reads an empty
+// database in ~/.cache while the watcher writes this one. The path is spelled out
+// in both places (niri has no config-level variables) — grep cliphist before
+// changing either, and keep the two identical.
+spawn-at-startup "sh" "-c" "XDG_CACHE_HOME=\"${XDG_RUNTIME_DIR:-/run/user/$UID}/cliphist-cache\" exec wl-paste --watch cliphist store"
 spawn-at-startup "wl-clip-persist" "--clipboard" "both"
 spawn-at-startup "nm-applet" "--indicator"
 // blueman-applet dropped: the waybar `bluetooth` module shows status and opens
@@ -177,6 +189,12 @@ spawn-at-startup "flatpak" "run" "com.github.wwmm.easyeffects" "--service-mode" 
 // OAuth token lives in ~/.config/rclone (never in the repo); this just starts the
 // user mount unit at login (systemd unit in the dotfiles systemd/ package).
 spawn-at-startup "systemctl" "--user" "start" "rclone-onedrive-iid.service"
+// rclone mount: the IID Company SharePoint library (sites/companyfiles/Shared
+// Documents) at ~/SharePoint-IIDCompany. SEPARATE from the mount above on
+// purpose — a SharePoint library is its own Graph drive, not a folder inside the
+// personal OneDrive, so it can never appear under ~/OneDrive-InstrumentalID no
+// matter how that remote is configured. The unit header has the evidence.
+spawn-at-startup "systemctl" "--user" "start" "rclone-iid-company.service"
 // Nextcloud desktop sync client (flatpak), as a user service rather than a bare
 // spawn. It WAS spawned directly here; on 2026-08-27 that silently did not start
 // at all — no process, no scope, no log — after working on the four boots before
@@ -409,7 +427,9 @@ binds {
     Mod+Shift+T { spawn "sh" "-c" "exec $HOME/.local/bin/voice-control"; } // Talk+control — toggle niri voice command mode (Vosk grammar → niri msg action)
 
     // Clipboard history picker.
-    Mod+V { spawn "sh" "-c" "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
+    // Same XDG_CACHE_HOME override as the wl-paste watcher at the top of this
+    // file — without it this reads a different (empty) database.
+    Mod+V { spawn "sh" "-c" "export XDG_CACHE_HOME=\"${XDG_RUNTIME_DIR:-/run/user/$UID}/cliphist-cache\"; cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
 
     Mod+Q       { close-window; }
 

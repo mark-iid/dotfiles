@@ -1,0 +1,45 @@
+[Unit]
+Description=Neutralise the on-disk recent-files and thumbnail caches
+# The settings that stop these from being written live elsewhere:
+#   gtk-recent-files-enabled=0          dotfiles gtk/.config/gtk-{3,4}.0/settings.ini
+#   misc-thumbnail-mode=NEVER           frameworkimage files/system/etc/xdg/xfce4/...
+#   every tumbler plugin Disabled=true  frameworkimage files/system/etc/xdg/tumbler/
+#
+# This unit is the backstop for anything that ignores them — a Qt app with its own
+# recent list, a GTK app that pokes GtkRecentManager directly, a thumbnailer that
+# is not tumbler. It makes the destinations unwritable rather than trying to
+# enumerate the writers.
+#
+# Deliberately idempotent and non-destructive: it never deletes a file it did not
+# create. A pre-existing real recently-used.xbel is moved aside to
+# recently-used.xbel.superseded (once — it will not clobber an existing .superseded)
+# and logged, so a history worth keeping is recoverable rather than silently gone.
+# Clearing those leftovers is a manual decision, not something a login does.
+#
+# Ordered before graphical-session.target so the symlink is in place before any
+# GTK app in the session gets a chance to create the file itself.
+Before=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bash -c '/usr/bin/install -d -m 700 "$${XDG_DATA_HOME:-$$HOME/.local/share}"; xbel="$${XDG_DATA_HOME:-$$HOME/.local/share}/recently-used.xbel"; if [ -L "$$xbel" ]; then :; elif [ -e "$$xbel" ]; then if [ -e "$$xbel.superseded" ]; then echo "leaving $$xbel alone: $$xbel.superseded already exists"; else /usr/bin/mv -n "$$xbel" "$$xbel.superseded" && echo "moved existing $$xbel to $$xbel.superseded"; fi; fi; [ -e "$$xbel" ] || /usr/bin/ln -s /dev/null "$$xbel"'
+# Thumbnail cache: exists, and is not writable. 0500 still grants r-x, so a
+# reader can traverse and stat (callers see "no thumbnail" rather than an error)
+# while creating a new file is denied.
+#
+# EVERY DIRECTORY, NOT JUST THE ROOT. Thumbnails are written into per-size
+# subdirectories — normal/, large/, x-large/, xx-large/, fail/ — so clamping only
+# $XDG_CACHE_HOME/thumbnails leaves any subdirectory that ALREADY exists at 0700
+# and writable, and the clamp silently does nothing. (Found exactly that way: with
+# the root at 0500, `touch thumbnails/normal/probe.png` still succeeded.) A fresh
+# account is protected either way, since tumbler cannot create the subdirectory
+# under a 0500 root — which is what makes this an easy bug to miss.
+#
+# -depth so the walk reads each directory before that directory is clamped.
+#
+# This covers $XDG_CACHE_HOME/thumbnails only. The shared-thumbnail spec's
+# .sh_thumbnails/ directories land beside the source files, anywhere on disk, and
+# cannot be pre-empted by permissions; the tumbler.rc override in frameworkimage
+# is the only thing that stops those.
+ExecStart=/usr/bin/bash -c 'd="$${XDG_CACHE_HOME:-$$HOME/.cache}/thumbnails"; /usr/bin/install -d -m 700 "$$d"; /usr/bin/find "$$d" -depth -type d -exec /usr/bin/chmod 0500 {} +'
