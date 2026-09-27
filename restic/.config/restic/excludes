@@ -58,6 +58,17 @@
 /home/mark/.local/share/Steam
 /home/mark/.steam
 
+# --- transient downloads ------------------------------------------------------------
+# ~/Downloads is a staging area, not storage: 1.8G across 82 items at the time this
+# was added, nearly all of it installers and archives fetched from somewhere that
+# still has them. Anything in here that turns out to matter gets moved somewhere
+# that is backed up; that is the convention this exclusion assumes.
+#
+# Consequence worth being clear about: a file that lives ONLY in ~/Downloads is not
+# backed up at all. Downloads is the one directory in $HOME where "it is on the NAS
+# too" stops being true.
+/home/mark/Downloads
+
 # --- ephemeral ----------------------------------------------------------------------
 *.tmp
 *.swp
