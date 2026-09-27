@@ -29,6 +29,16 @@ id_dsa
 **/*token*
 .env
 .env.*
+# Passphrase files. This gap is how restic/.config/restic/password reached a
+# PUBLIC repo and stayed there from 2026-08-11 until it was noticed: the block
+# above catches *secret* and *token* but nothing matching "password", and the
+# restic repo passphrase is stored in a file named exactly that. restic wants a
+# file it can read unattended (RESTIC_PASSWORD_FILE), so the file has to exist —
+# it just must never be tracked. It lives at ~/.config/restic/password, outside
+# any stow package now.
+**/password
+**/*password*
+**/*passphrase*
 !.env.example
 
 # --- general junk ---
@@ -46,3 +56,12 @@ btop/.config/btop/btop.conf
 # their targets are absolute /home/<user>/... paths that resolve for one username.
 # Which units to enable is recorded in kb3lyb-bootstrap (frameworkimage) instead.
 systemd/.config/systemd/user/*.target.wants/
+
+# --- NEVER publish: writing-voice profile -----------------------------------
+# ~/.claude/mark-voice-guide.md is derived from ~1,400 private emails and would
+# let someone impersonate Mark convincingly. Already covered by the deny-all on
+# line 6, repeated here as the LAST word in the file so a future `!` whitelist
+# cannot silently un-ignore it (last matching pattern wins). The pre-commit hook
+# blocks it by filename too, in case someone reaches for `git add -f`.
+claude/.claude/mark-voice-guide.md
+**/mark-voice-guide.md

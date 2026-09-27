@@ -12,8 +12,12 @@ for f in $(git diff --cached --name-only --diff-filter=ACM); do
     case ".githooks/" in "$f"*) continue;; esac
     case "$(basename "$f")" in
         rclone.conf|.credentials.json|credentials.json|.netrc|.git-credentials|\
-        id_rsa|id_ed25519|id_ecdsa|id_dsa|*.pem|*.key|*.p12|*.pfx|*.gpg)
+        id_rsa|id_ed25519|id_ecdsa|id_dsa|*.pem|*.key|*.p12|*.pfx|*.gpg|\
+        password|*password*|*passphrase*)
             echo "BLOCKED: credential-like file staged: $f" >&2; fail=1;;
+        mark-voice-guide.md)
+            echo "BLOCKED: $f is impersonation material (derived from private" >&2
+            echo "         correspondence) and must never reach a public repo." >&2; fail=1;;
     esac
 done
 
