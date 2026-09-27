@@ -168,7 +168,17 @@ spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
 // in both places (niri has no config-level variables) — grep cliphist before
 // changing either, and keep the two identical.
 spawn-at-startup "sh" "-c" "XDG_CACHE_HOME=\"${XDG_RUNTIME_DIR:-/run/user/$UID}/cliphist-cache\" exec wl-paste --watch cliphist store"
-spawn-at-startup "wl-clip-persist" "--clipboard" "both"
+// REGULAR ONLY — NOT "both", and never "primary". Persisting the *primary*
+// selection breaks mouse text selection: wl-clip-persist works by reading the
+// selection and then taking over ownership of it, and GTK-based apps clear their
+// highlight when the primary-selection owner changes, so a drag-select vanishes
+// the instant the button is released. Upstream documents this as a known issue
+// (#3, "Primary selection mode breaks the selection system") and recommends
+// regular-only; see /usr/share/doc/wl-clip-persist/README.md. Seen here in both
+// Firefox and Evolution, along with Ctrl+C needing several tries to land.
+// `regular` still covers the reason this is installed at all: the clipboard
+// surviving the source window closing.
+spawn-at-startup "wl-clip-persist" "--clipboard" "regular"
 spawn-at-startup "nm-applet" "--indicator"
 // blueman-applet dropped: the waybar `bluetooth` module shows status and opens
 // blueman-manager on click for pairing (bluetoothd still runs the stack).
