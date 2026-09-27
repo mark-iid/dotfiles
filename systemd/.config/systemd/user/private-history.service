@@ -43,3 +43,34 @@ ExecStart=/usr/bin/bash -c '/usr/bin/install -d -m 700 "$${XDG_DATA_HOME:-$$HOME
 # cannot be pre-empted by permissions; the tumbler.rc override in frameworkimage
 # is the only thing that stops those.
 ExecStart=/usr/bin/bash -c 'd="$${XDG_CACHE_HOME:-$$HOME/.cache}/thumbnails"; /usr/bin/install -d -m 700 "$$d"; /usr/bin/find "$$d" -depth -type d -exec /usr/bin/chmod 0500 {} +'
+
+# --- flatpak recent-files stores ---------------------------------------------
+# Flatpaks do not read the host's ~/.config/gtk-{3,4}.0/settings.ini: each app's
+# XDG_CONFIG_HOME is its own ~/.var/app/<id>/config, so gtk-recent-files-enabled=0
+# never reaches them and every GTK app inside a sandbox keeps its own
+# recently-used.xbel under ~/.var/app/<id>/data. Found eight of them here, the
+# largest being org.gnome.Papers at 58K — a full record of every PDF opened.
+#
+# Rather than plant a settings.ini per app (eight more files to maintain, and a
+# newly installed flatpak would arrive unprotected), point each store at
+# /dev/null. /dev/null exists inside the sandbox, so writes succeed and vanish.
+#
+# NOTE, this branch DELETES where the host branch above preserves. A real file
+# reappearing here means an app or a flatpak update recreated its recent list,
+# which is exactly the data that is not wanted on disk — so it is replaced, not
+# moved aside. Deliberate asymmetry: the host file was pre-existing history of
+# unknown value, these are explicitly unwanted.
+#
+# Second loop pre-creates the symlink in any app data dir that has no store yet,
+# so a flatpak installed later is covered from its next login rather than after
+# it has already written a history. The nested glob catches apps that namespace
+# the file under data/<app-id>/ (org.gnome.TextEditor does).
+ExecStart=/usr/bin/bash -c 'shopt -s nullglob; \
+    for f in "$$HOME"/.var/app/*/data/recently-used.xbel "$$HOME"/.var/app/*/data/*/recently-used.xbel; do \
+        [ "$$(readlink -- "$$f")" = /dev/null ] && continue; \
+        rm -f -- "$$f"; ln -s /dev/null "$$f"; \
+    done; \
+    for d in "$$HOME"/.var/app/*/data; do \
+        [ -d "$$d" ] || continue; \
+        [ -e "$$d/recently-used.xbel" ] || ln -s /dev/null "$$d/recently-used.xbel"; \
+    done'
