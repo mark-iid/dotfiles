@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# dosdev -- DOSBox-X profiles for Mark's DOS material.
+#
+# TWO PROFILES, deliberately different in how they treat writes:
+#
+#   dosdev          toolchest.  C: = ~/dos, the 1994-95 archive, with ~/dos-work
+#                   layered on top as an OVERLAY. The guest sees one merged C:,
+#                   but every write lands in ~/dos-work and ~/dos is never
+#                   modified. This is not superstition: A86 rewrites its .ASM in
+#                   place on error and renames the original to .ERR, the BASIC
+#                   compilers scatter .OBJ/.BAK beside sources, and Windows 3.1
+#                   rewrites SYSTEM.INI, WIN.INI and its .GRP files on every run.
+#                   To keep something you built, move it out of ~/dos-work.
+#
+#   dosdev games    games.  C: = ~/dosgames, plain read-write, NO overlay --
+#                   games must persist saves and high scores. ~/dos is not
+#                   mounted, so nothing you install can leak into the archive.
+#
+# WHY NOT ONE PATH IN THE TOOLCHEST. BC.EXE exists in both QB45 and BC7\BINB;
+# LINK.EXE and LIB.EXE each exist in three places. A single PATH silently picks
+# the wrong compiler, so each toolchain has its own batch on C: -- QB45, PDS,
+# TC, MASM, TASM, A86. Type HELP inside for the list.
+#
+# USAGE
+#   dosdev [--tandy] [--cycles N] [--machine M] [-- <extra dosbox-x args>]
+#   dosdev games [same flags]
+set -euo pipefail
+
+CFGDIR="${XDG_CONFIG_HOME:-$HOME/.config}/dosbox-x"
+profile=tool
+args=()
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        games|game)  profile=games; shift ;;
+        tool|dev)    profile=tool;  shift ;;
+        --tandy)     args+=(-set dosbox machine=tandy); shift ;;
+        --machine)   args+=(-set dosbox machine="${2:?--machine needs a value}"); shift 2 ;;
+        --cycles)    args+=(-set cpu cycles="${2:?--cycles needs a value}"); shift 2 ;;
+        -h|--help)   sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
+        --)          shift; args+=("$@"); break ;;
+        *)           args+=("$1"); shift ;;
+    esac
+done
+
+case "$profile" in
+    games) CONF="$CFGDIR/games.conf";  mkdir -p "$HOME/dosgames"
+           SHARE=(--filesystem="$HOME/dosgames") ;;
+    tool)  CONF="$CFGDIR/markdos.conf"; mkdir -p "$HOME/dos-work"
+           SHARE=(--filesystem="$HOME/dos" --filesystem="$HOME/dos-work") ;;
+esac
+[ -f "$CONF" ] || { echo "dosdev: missing $CONF" >&2; exit 1; }
+
+exec flatpak run --user "${SHARE[@]}" \
+    com.dosbox_x.DOSBox-X -conf "$CONF" ${args[@]+"${args[@]}"}
