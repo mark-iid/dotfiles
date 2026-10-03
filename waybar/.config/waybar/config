@@ -21,8 +21,10 @@
         "status-icons": { "playing": "▶", "paused": "⏸", "stopped": "⏹" },
         "on-click": "playerctl play-pause",
         "on-click-right": "playerctl next",
-        "on-scroll-up": "playerctl volume 0.05+",
-        "on-scroll-down": "playerctl volume 0.05-",
+        "reverse-scrolling": true,
+        "smooth-scrolling-threshold": 2,
+        "on-scroll-up": "playerctl volume 0.01+",
+        "on-scroll-down": "playerctl volume 0.01-",
         "tooltip-format": "{title}\n{artist} — {album}\n(click: play/pause · right-click: next)"
     },
     "clock": {
