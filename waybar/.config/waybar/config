@@ -75,6 +75,9 @@
         "format": "{icon} {volume}%",
         "format-muted": "󰝟 muted",
         "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
+        "reverse-scrolling": true,
+        "smooth-scrolling-threshold": 2,
+        "scroll-step": 1,
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
     },
     "cpu": {
