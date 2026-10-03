@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# qb64 -- QB64 Phoenix Edition, run inside the 'qb64' toolbox.
+#
+# The host is Fedora Atomic and carries no -devel packages, so the linker
+# symlinks QB64 needs (libGL.so, libX11.so, ...) exist only in the container.
+# QB64 itself lives in ~/apps/qb64pe, which is shared with the host, so your
+# programs and its config are plain files in your home directory.
+#
+#   qb64            open the IDE
+#   qb64 foo.bas    open foo.bas in the IDE
+#   qb64 -x foo.bas compile only, no IDE
+exec toolbox run -c qb64 /home/mark/apps/qb64pe/qb64pe "$@"

@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# qb64-setup — (re)provision the `qb64` toolbox that backs QB64 Phoenix Edition.
+#
+# Rebuilds everything `bin/qb64` depends on, idempotently:
+#   - the `qb64` toolbox container
+#   - the -devel packages QB64 links against       (absent from an Atomic host)
+#   - zenity                                       (see NOTE below)
+#   - QB64pe itself, compiled from the release tarball, into ~/apps/qb64pe
+#   - the desktop entry, repointed at bin/qb64
+#
+# WHY A CONTAINER. The host is Fedora Atomic and carries runtime libraries but no
+# -devel packages, so the linker symlinks QB64 needs (libGL.so, libX11.so, ...)
+# do not exist and a host install fails at link time. Only *compiling* needs the
+# container: the binaries QB64 produces run natively on the host.
+#
+# NOTE: ZENITY IS NOT OPTIONAL. QB64pe does not draw its own file dialogs on
+# Linux -- File > Open shells out to zenity/kdialog/yad/Xdialog. With none of
+# them present it prints "missing software! (we will try basic console input)"
+# to stderr and falls back to console input, which a GL window cannot show. The
+# symptom is that Open silently does nothing, with no visible error.
+#
+# Run once after a clean install (after `stow bin`). Safe to re-run.
+set -euo pipefail
+
+CONTAINER=qb64
+QB64_VER=4.6.0
+QB64_DIR="$HOME/apps/qb64pe"
+QB64_URL="https://github.com/QB64-Phoenix-Edition/QB64pe/releases/download/v${QB64_VER}/qb64pe_lnx-${QB64_VER}.tar.gz"
+
+# Discovered the hard way, one failed setup_lnx.sh run at a time. GLU, curl and
+# png are each needed by a different part of the build and none are pulled in by
+# the others.
+PKGS=(
+    gcc-c++ make zlib-devel
+    mesa-libGL-devel mesa-libGLU-devel
+    libX11-devel libXcursor-devel libXi-devel libXrandr-devel
+    libXinerama-devel libXext-devel libXrender-devel libxcb-devel
+    alsa-lib-devel libcurl-devel libpng-devel libjpeg-turbo-devel
+    openssl-devel systemd-devel freetype-devel fontconfig-devel
+    zenity
+)
+
+say() { printf '\n\033[1;36m==> %s\033[0m\n' "$1"; }
+
+# --- 1. container ---------------------------------------------------------
+if podman container exists "$CONTAINER" 2>/dev/null; then
+    say "toolbox '$CONTAINER' already exists"
+else
+    say "creating toolbox '$CONTAINER'"
+    toolbox create -y "$CONTAINER"
+fi
+
+# --- 2. build dependencies ------------------------------------------------
+say "installing build dependencies (${#PKGS[@]} packages)"
+toolbox run -c "$CONTAINER" sudo dnf -y install "${PKGS[@]}"
+
+# --- 3. QB64pe ------------------------------------------------------------
+if [ -x "$QB64_DIR/qb64pe" ]; then
+    say "QB64pe already built at $QB64_DIR"
+else
+    say "downloading and building QB64pe $QB64_VER"
+    mkdir -p "$HOME/apps"
+    tmp=$(mktemp -d)
+    curl -fL --progress-bar -o "$tmp/qb64pe.tar.gz" "$QB64_URL"
+    tar xzf "$tmp/qb64pe.tar.gz" -C "$HOME/apps"
+    rm -rf "$tmp"
+    # setup_lnx.sh compiles the IDE, so it has to run inside the container
+    toolbox run -c "$CONTAINER" bash -lc "cd '$QB64_DIR' && ./setup_lnx.sh"
+    [ -x "$QB64_DIR/qb64pe" ] || { echo "qb64-setup: build failed" >&2; exit 1; }
+fi
+
+# --- 4. desktop entry -----------------------------------------------------
+# setup_lnx.sh writes an entry pointing at run_qb64pe.sh, which would run on the
+# host and fail to compile anything. Repoint it at the wrapper.
+DESKTOP="$HOME/.local/share/applications/qb64pe.desktop"
+if [ -f "$DESKTOP" ]; then
+    say "pointing the desktop entry at bin/qb64"
+    sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/qb64|" "$DESKTOP"
+fi
+
+say "done — run 'qb64' to open the IDE"
