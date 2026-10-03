@@ -68,5 +68,6 @@
       "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). This repo (/var/home/mark/src/flipper) has no remotes and no tracked files; treat only the working directory as trusted. When visibility is given, use it to scope what is OK to commit or push; content ported or first read from outside this session's repo is not its own work. Secrets and sensitive data are never cleared into any repo by its visibility.",
       "**Org-specific CLIs**: None configured"
     ]
-  }
+  },
+  "model": "opus[1m]"
 }
