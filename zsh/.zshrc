@@ -1,7 +1,8 @@
-# kb3lyb .zshrc — portable across Linux (linuxbrew at /home/linuxbrew/.linuxbrew)
-# and Apple Silicon macOS (brew at /opt/homebrew). No oh-my-zsh, no framework
-# (DESIGN §1). brew plugins are sourced via $(brew --prefix), never a hardcoded
-# path, so this same file works on both machines.
+# kb3lyb .zshrc — portable across Fedora (tools and zsh plugins from dnf, under
+# /usr) and Apple Silicon macOS (brew at /opt/homebrew). No oh-my-zsh, no
+# framework (DESIGN §1). brew plugins are sourced via $(brew --prefix), Fedora's
+# from /usr/share, each guarded, so this same file works on both machines.
+# linuxbrew is still located below if present, but Fedora no longer uses it.
 
 # --- Homebrew (locate on either platform) --------------------------------------
 if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -49,6 +50,11 @@ if [[ -n "$BREW_PREFIX" ]]; then
     [[ -r "$f" ]] && source "$f"
   done
 fi
+# Fedora: the same plugin from dnf. Syntax highlighting is sourced at the very end
+# of this file instead: unlike the fast- fork above, zsh-syntax-highlighting must
+# load after every other widget is defined.
+[[ -r /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
+  source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # --- prompt + shell tools ------------------------------------------------------
 command -v starship >/dev/null && eval "$(starship init zsh)"
@@ -221,3 +227,9 @@ fixterm() {
   _reset_terminal_modes
   printf '\e[?1049l'
 }
+
+# --- syntax highlighting (Fedora, dnf) — MUST stay the last thing in this file --
+# zsh-syntax-highlighting wraps the widgets that exist when it loads, so anything
+# defined after it (atuin's Ctrl-R, zoxide, etc.) would go unhighlighted.
+[[ -r /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
+  source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
