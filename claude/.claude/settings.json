@@ -11,9 +11,9 @@
       "Bash(command -v *)"
     ],
     "deny": [
-      "Read(//var/home/mark/.ssh/**)",
-      "Read(//var/home/mark/.aws/**)",
-      "Read(//var/home/mark/.gnupg/**)",
+      "Read(//home/mark/.ssh/**)",
+      "Read(//home/mark/.aws/**)",
+      "Read(//home/mark/.gnupg/**)",
       "Read(**/.env)",
       "Read(**/*.pem)",
       "Read(**/*.key)"
@@ -65,7 +65,7 @@
       "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment",
       "### User-specific",
       "**Primary use of Claude Code**: software development",
-      "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). This repo (/var/home/mark/src/flipper) has no remotes and no tracked files; treat only the working directory as trusted. When visibility is given, use it to scope what is OK to commit or push; content ported or first read from outside this session's repo is not its own work. Secrets and sensitive data are never cleared into any repo by its visibility.",
+      "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). When visibility is given, use it to scope what is OK to commit or push; content ported or first read from outside this session's repo is not its own work. Secrets and sensitive data are never cleared into any repo by its visibility.",
       "**Org-specific CLIs**: None configured"
     ]
   },
