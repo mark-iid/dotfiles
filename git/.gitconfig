@@ -35,4 +35,7 @@
 	br = branch
 	lg = log --oneline --graph --decorate -20
 [credential]
-	helper = store
+	# HTTPS tokens (git.mystikos.org has no public SSH) go in the desktop keyring
+	# via the Secret Service API, never ~/.git-credentials in plain text.
+	# Fedora: dnf install git-credential-libsecret
+	helper = libsecret
