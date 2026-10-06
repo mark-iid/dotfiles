@@ -74,3 +74,9 @@ ExecStart=/usr/bin/bash -c 'shopt -s nullglob; \
         [ -d "$$d" ] || continue; \
         [ -e "$$d/recently-used.xbel" ] || ln -s /dev/null "$$d/recently-used.xbel"; \
     done'
+
+# niri started this with spawn-at-startup; KDE has no equivalent line, so the
+# unit pulls itself in. Plasma's systemd startup reaches graphical-session.target,
+# and Before= above still orders it ahead of the session's apps.
+[Install]
+WantedBy=graphical-session.target
