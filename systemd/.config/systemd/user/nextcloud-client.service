@@ -1,5 +1,5 @@
 [Unit]
-Description=Nextcloud desktop sync client (flatpak)
+Description=Nextcloud desktop sync client
 # WHY THIS IS A UNIT AND NOT spawn-at-startup. It was
 # `spawn-at-startup "flatpak" "run" "com.nextcloud.desktopclient.nextcloud" "--background"`
 # in niri's config. On 2026-08-27 that spawn simply did not happen: no process, no
@@ -97,13 +97,25 @@ Type=simple
 # benign "skipped" log line. Only a failing ExecStartPre= produces a genuinely
 # failed unit (ActiveState=failed Result=exit-code), which is the whole point:
 # the breakage has to be visible somewhere you already look.
-ExecStartPre=/usr/bin/mountpoint -q /var/mnt/data
+#
+# Since 2026-10-07 (Fedora KDE reinstall) the card is LUKS2 + btrfs mounted at
+# /mnt/data, unlocked at boot by a key file; the sync root is /mnt/data/nextcloud.
+# The /var/mnt/data notes above are history from the atomic image.
+ExecStartPre=/usr/bin/mountpoint -q /mnt/data
 
-# --background starts straight to the tray (waybar's tray module renders the SNI
-# icon) rather than popping the window, mirroring EasyEffects' --hide-window.
-# Account and credentials live in the flatpak's own config under
-# ~/.var/app/com.nextcloud.desktopclient.nextcloud — never in this repo.
-# WHY --die-with-parent. `flatpak run` does not keep the app in this unit's
+# --background starts straight to the tray rather than popping the window,
+# mirroring EasyEffects' --hide-window.
+# Account and credentials live in the client's own config under
+# ~/.config/Nextcloud (and the keyring) — never in this repo. Turn OFF the
+# client's own "Launch on system startup" so it is not started twice.
+#
+# SINCE 2026-10-07 THIS IS THE RPM (nextcloud-client + nextcloud-client-dolphin
+# for the Dolphin overlay icons), not the flatpak. /usr/bin/nextcloud runs inside
+# this unit's own cgroup, so stopping the unit stops the client directly and both
+# problems below cannot happen. The --die-with-parent notes are kept because they
+# explain the history, and they still apply to any flatpak unit.
+#
+# WHY --die-with-parent (flatpak era). `flatpak run` does not keep the app in this unit's
 # cgroup: the client ends up in its own transient app-flatpak-*.scope under
 # app.slice, with only `flatpak run` left in the service. Two things break as a
 # result, and both were observed on 2026-09-13.
@@ -133,10 +145,15 @@ ExecStartPre=/usr/bin/mountpoint -q /var/mnt/data
 # -p/--die-with-parent ties the sandboxed app's lifetime to `flatpak run`, which
 # IS in this unit's cgroup, so stopping the unit genuinely stops the client and
 # releases the mount. Verified both behaviours after adding it.
-ExecStart=/usr/bin/flatpak run --die-with-parent com.nextcloud.desktopclient.nextcloud --background
+ExecStart=/usr/bin/nextcloud --background
 # The point of the unit: a launch that fails now fails visibly and is retried,
 # instead of the bare spawn-at-startup's silent one-shot nothing.
 Restart=on-failure
 RestartSec=15
 # The start limit that bounds these retries is in [Unit] above — it is only
 # honoured there. See the note on StartLimitIntervalSec.
+
+# niri started this with spawn-at-startup; under KDE the unit pulls itself in
+# with the session, the same as private-history.service.
+[Install]
+WantedBy=graphical-session.target
