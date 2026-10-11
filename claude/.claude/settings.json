@@ -14,11 +14,15 @@
       "Read(//home/mark/.ssh/**)",
       "Read(//home/mark/.aws/**)",
       "Read(//home/mark/.gnupg/**)",
+      "Read(//var/home/mark/.ssh/**)",
+      "Read(//var/home/mark/.aws/**)",
+      "Read(//var/home/mark/.gnupg/**)",
       "Read(**/.env)",
       "Read(**/*.pem)",
       "Read(**/*.key)"
     ]
   },
+  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -68,6 +72,5 @@
       "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). When visibility is given, use it to scope what is OK to commit or push; content ported or first read from outside this session's repo is not its own work. Secrets and sensitive data are never cleared into any repo by its visibility.",
       "**Org-specific CLIs**: None configured"
     ]
-  },
-  "model": "opus[1m]"
+  }
 }
