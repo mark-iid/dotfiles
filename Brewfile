@@ -17,6 +17,8 @@ brew "ugrep"
 brew "zoxide"
 brew "direnv"
 brew "yq"            # YAML query/validate (mikefarah) — checks frameworkimage recipe.yml
+brew "qemu"          # frameworkimage VM boot test (vm/boot-check.sh). 2D only: no virtio-vga-gl, so niri
+                     # will not render; tuigreet/boot checks work. Not in the image (SETUP §3)
 # mosh — UDP remote shell. Needed on BOTH ends, which is why it is in this file
 # rather than the image: this Brewfile is what bootstraps the mac mini too, so one
 # line gets the client here and mosh-server on iidmacmini. See claude-mini-mosh in
