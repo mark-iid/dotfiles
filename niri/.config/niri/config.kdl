@@ -280,6 +280,18 @@ window-rule {
     default-window-height { proportion 0.2; }
 }
 
+// Apps that are unusable at the default half width open at full width instead,
+// still tiled (same as Mod+F, so Mod+R / Mod+F still resize them). Add more
+// app-ids to the alternation; `niri msg windows` shows the ID of an open window.
+// Godot: the flatpak runs under Xwayland by default, where the ID is the WM_CLASS
+// (Godot, Godot_ProjectList, Godot_Editor); on native Wayland it is
+// org.godotengine.Godot. The pattern covers all of them. That includes a game
+// launched from the editor, which also opens full width.
+window-rule {
+    match app-id=r#"^(?i)(org\.godotengine\.)?godot(_.*)?$"#
+    default-column-width { proportion 1.0; }
+}
+
 window-rule {
     match app-id=r#"^(?i)js8call$"#
     open-floating true
