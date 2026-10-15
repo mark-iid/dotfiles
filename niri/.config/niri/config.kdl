@@ -151,9 +151,12 @@ layout {
 // xdg-desktop-portal then serves to GTK3 apps. A theme name that does not exist
 // on disk silently makes GTK3 render light — see that unit's comment.
 spawn-at-startup "systemctl" "--user" "start" "desktop-appearance.service"
-spawn-at-startup "systemctl" "--user" "start" "graphical-session-bind.service"
+// waybar runs as its packaged user unit (Restart=on-failure) rather than a bare
+// spawn: 0.15.0's mpris module segfaults on its own now and then, and a bare
+// spawn left the bar gone until the next login. The unit is Requisite= on
+// graphical-session.target, so it is started only after the bind unit is up.
+spawn-sh-at-startup "systemctl --user start graphical-session-bind.service && systemctl --user start waybar.service"
 spawn-at-startup "systemctl" "--user" "start" "private-history.service"
-spawn-at-startup "waybar"
 spawn-at-startup "mako"
 spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
 // cliphist, with its database on tmpfs. cliphist has no --db flag and no
